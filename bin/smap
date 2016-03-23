@@ -23,7 +23,9 @@ def inspect_csv(ctx, param, value):
 
     fsize = os.stat(value).st_size
     if fsize > settings.MAX_BYTES:
-        raise click.BadParameter('CSV exceeds 200K.')
+        raise click.BadParameter(
+            'CSV exceeds {0}K.'.format(
+                settings.MAX_BYTES))
     return value
 
 

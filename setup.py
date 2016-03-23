@@ -11,6 +11,7 @@ setup(name='smap',
       install_requires=[
           'click',
           'grequests',
+          'SQLAlchemy',
       ],
       scripts=['bin/smap'],
       classifiers=[

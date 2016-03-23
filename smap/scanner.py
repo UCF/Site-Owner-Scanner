@@ -29,12 +29,12 @@ class Scanner(object):
         self.path = path
 
     @staticmethod
-    def add_host(host):
+    def _add_host(host):
         return host if re.match(
             r'^(ucf\.edu|.*ucf\.edu)', host) else '{host}.ucf.edu'.format(host=host)
 
     @staticmethod
-    def add_port(protocol):
+    def _add_port(protocol):
         return 80 if protocol == Scanner.PROTOCOLS[0] else 443
 
     def url_factory(self):
@@ -44,14 +44,14 @@ class Scanner(object):
                     given=protocol, supported=self.PROTOCOLS)
                 sys.exit(1)
 
-            with open(self.path, 'rb') as f:
+            with open(self.path, 'rb') as dump:
                 dns_dump = csv.reader(
-                    f, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+                    dump, delimiter=',', quoting=csv.QUOTE_MINIMAL)
                 dns_dump.next()
 
                 whitelist = ('A', 'AAAA')
-                return [('{host}'.format(host=self.add_host(record[0])), '{protocol}://{ipaddr}:{port}'.format(
-                    protocol=protocol, ipaddr=record[2], port=self.add_port(protocol))) for record in dns_dump if record[1] in whitelist]
+                return [('{host}'.format(host=self._add_host(record[0])), '{protocol}://{ipaddr}:{port}'.format(
+                    protocol=protocol, ipaddr=record[2], port=self._add_port(protocol))) for record in dns_dump if record[1] in whitelist]
         return by_protocol
 
     def scan(self):
