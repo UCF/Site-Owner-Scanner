@@ -17,6 +17,7 @@ setup(name='smap',
       classifiers=[
           'Programming Language :: Python :: 2.7',
           'Envrionment :: Console',
-          'License :: OSI Approved :: MIT License'
+          'License :: OSI Approved :: MIT License',
+          'Development Status :: Pre-Alpha'
       ],
       zip_safe=False)
