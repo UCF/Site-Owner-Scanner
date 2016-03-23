@@ -1,0 +1,56 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from smap import settings
+from smap.scanner import Scanner
+
+import click
+import mimetypes
+import random
+import pkg_resources
+import os
+import sys
+
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+
+def inspect_csv(ctx, param, value):
+    mimetype = mimetypes.guess_type(value, strict=True)[0]
+    extension = mimetypes.guess_extension(mimetype, strict=True)
+
+    if mimetype != 'text/csv' or extension != '.csv':
+        raise click.BadParameter('\'{0}\' is not a CSV file.'.format(value))
+
+    fsize = os.stat(value).st_size
+    if fsize > settings.MAX_BYTES:
+        raise click.BadParameter('CSV exceeds 200K.')
+    return value
+
+
+def welcome():
+    print r"""
+
+ ________  _____ ______   ________  ________
+|\   ____\|\   _ \  _   \|\   __  \|\   __  \
+\ \  \___|\ \  \\\__\ \  \ \  \|\  \ \  \|\  \
+ \ \_____  \ \  \\|__| \  \ \   __  \ \   ____\
+  \|____|\  \ \  \    \ \  \ \  \ \  \ \  \___|
+    ____\_\  \ \__\    \ \__\ \__\ \__\ \__\
+   |\_________\|__|     \|__|\|__|\|__|\|__|
+   \|_________|
+
+---- [ version {0}  D.Ford <Demetrius.Ford@ucf.edu ] ----
+
+    """.format(settings.VERSION)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.version_option(version=settings.VERSION)
+@click.argument('path', type=click.Path(exists=True), callback=inspect_csv)
+def smap(path):
+    welcome()
+    click.echo('[*] scanning sites ...')
+    Scanner(path).scan()
+
+if __name__ == '__main__':
+    sys.exit(smap())

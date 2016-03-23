@@ -1,8 +1,10 @@
-CONCURRENT_REQUESTS = 20
-TIMEOUT = 10
-PROTOCOLS = ('http', 'https')
+import pkg_resources
 
-VERSION = '0.0.1'
+VERSION = pkg_resources.get_distribution('smap').version
+TIMEOUT = 10
+CONCURRENT_REQUESTS = 20
+
+MAX_BYTES = 200000
 
 USER_AGENTS = (
     'Mozilla/5.0 (X11; Linux x86_64; rv:44.0) Gecko/20100101 Firefox/44.0',

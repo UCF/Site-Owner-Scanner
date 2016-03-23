@@ -22,7 +22,7 @@ eggs/
 # Miscellaneous
 *.swp
 *.csv
-*.xls
+*.xlsx
 
 # Pyenv
 .python-version
