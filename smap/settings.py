@@ -1,5 +1,7 @@
 import pkg_resources
 
+DEBUG = False
+
 VERSION = pkg_resources.get_distribution('smap').version
 TIMEOUT = 10
 CONCURRENT_REQUESTS = 20

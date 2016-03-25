@@ -12,6 +12,7 @@ setup(name='smap',
           'click',
           'grequests',
           'SQLAlchemy',
+          'SQLAlchemy-Utils'
       ],
       scripts=['bin/smap'],
       classifiers=[

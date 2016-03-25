@@ -3,6 +3,7 @@
 
 from smap import settings
 from smap.scanner import Scanner
+from sqlalchemy import URL
 
 import click
 import mimetypes
@@ -10,9 +11,13 @@ import random
 import pkg_resources
 import os
 import sys
+import sqlalcehmy
 
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+Engine = sqlalchemy.create_engine(
+    URL(**settings.DATABASE), echo=settings.DEBUG)
+Session = sqlalchemy.sessionmaker(bind=Engine)
 
+s = Session()
 
 def inspect_csv(ctx, param, value):
     mimetype = mimetypes.guess_type(value, strict=True)[0]
@@ -22,9 +27,9 @@ def inspect_csv(ctx, param, value):
         raise click.BadParameter('\'{0}\' is not a CSV file.'.format(value))
 
     fsize = os.stat(value).st_size
-    if fsize > settings.MAX_BYTES:
+    if not fsize >= 0 and fsize <= settings.MAX_BYTES:
         raise click.BadParameter(
-            'CSV exceeds {0}K.'.format(
+            'CSV doesn't meet size requirements {0}K.'.format(
                 settings.MAX_BYTES))
     return value
 
@@ -46,13 +51,22 @@ def welcome():
     """.format(settings.VERSION)
 
 
-@click.command(context_settings=CONTEXT_SETTINGS)
+@click.group()
 @click.version_option(version=settings.VERSION)
-@click.argument('path', type=click.Path(exists=True), callback=inspect_csv)
-def smap(path):
+def smap():
+    pass
+
+
+@smap.command()
+def scan():
     welcome()
     click.echo('[*] scanning sites ...')
-    Scanner(path).scan()
+
+
+@smap.command()
+@click.argument('fpath', type=click.Path(exists=True), callback=inspect_csv)
+def upload(fpath):
+    pass
 
 if __name__ == '__main__':
     sys.exit(smap())
