@@ -3,7 +3,12 @@
 
 from smap import settings
 from smap.scanner import Scanner
-from sqlalchemy import URL
+from smap.database import Base
+
+from sqlalchemy.engine.url import URL
+from sqlalchemy.engine import reflection
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy_utils import database_exists
 
 import click
 import mimetypes
@@ -11,14 +16,26 @@ import random
 import pkg_resources
 import os
 import sys
-import sqlalcehmy
+import sqlalchemy
 
 Engine = sqlalchemy.create_engine(
     URL(**settings.DATABASE), echo=settings.DEBUG)
-Session = sqlalchemy.sessionmaker(bind=Engine)
+Session = sessionmaker(bind=Engine)
 
 s = Session()
 
+def has_tables():
+    inspector = reflection.Inspector.from_engine(Engine)
+    return any(inspector.get_table_names())
+
+if not database_exists(Engine.url):
+    print 'Database not found...'
+    sys.exit(1)
+    
+if not has_tables():
+    Base.metadata.create_all(Engine, checkfirst=True)
+    print 'creating tables...'
+    
 def inspect_csv(ctx, param, value):
     mimetype = mimetypes.guess_type(value, strict=True)[0]
     extension = mimetypes.guess_extension(mimetype, strict=True)
@@ -29,7 +46,7 @@ def inspect_csv(ctx, param, value):
     fsize = os.stat(value).st_size
     if not fsize >= 0 and fsize <= settings.MAX_BYTES:
         raise click.BadParameter(
-            'CSV doesn't meet size requirements {0}K.'.format(
+            'CSV doesn\'t meet size requirements {0}K.'.format(
                 settings.MAX_BYTES))
     return value
 
