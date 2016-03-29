@@ -49,10 +49,9 @@ class Scanner(object):
                     dump, delimiter=',', quoting=csv.QUOTE_MINIMAL)
                 dns_dump.next()
 
-                accepted_types = ('A', 'AAAA')
+                record_types = ('A', 'AAAA')
                 return [('{host}'.format(host=self.__add_host(record[0])), '{protocol}://{ipaddr}:{port}'.format(
-                    protocol=protocol, ipaddr=record[2], port=self.__add_port(protocol))) for record in dns_dump
-                    if record[1] in accepted_types]
+                    protocol=protocol, ipaddr=record[2], port=self.__add_port(protocol))) for record in dns_dump if record[1] in record_types]
         return by_protocol
 
     def scan(self):

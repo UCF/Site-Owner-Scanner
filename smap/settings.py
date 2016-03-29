@@ -1,11 +1,16 @@
 import pkg_resources
 
+# Program version number
 VERSION = pkg_resources.get_distribution('smap').version
+# Default request timeout
 TIMEOUT = 10
+# Amount of requests to make at a time
 CONCURRENT_REQUESTS = 20
 
+# Byte constraint to limit unexpected *.csv file sizes
 MAX_BYTES = 200000
 
+# Browser agents to use in requests
 USER_AGENTS = (
     'Mozilla/5.0 (X11; Linux x86_64; rv:44.0) Gecko/20100101 Firefox/44.0',
     'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36',
@@ -17,11 +22,11 @@ USER_AGENTS = (
     'Mozilla/5.0 (X11; Linux x86_64; rv:43.0) Gecko/20100101 Firefox/43.0',
     'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.116 Safari/537.36',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_3) AppleWebKit/601.4.4 (KHTML, like Gecko) Version/9.0.3 Safari/601.4.4')
-    
+
 try:
     from settings_local import *
 except ImportError:
     raise Exception(
-        'Local settings file was not found. ' +
+        'Local settings file was not found. '
         'Ensure settings_local.py exists in smap root.'
     )

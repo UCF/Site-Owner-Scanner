@@ -1,10 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from smap.database import Base
+from smap.database import IP
+from smap.database import Domain
+from smap.database import FirewallMap
+from smap.database import DNSList
+from smap.database import DNSRecordType
+
 from smap import settings
 from smap.scanner import Scanner
-from smap.database import Base
-
 from sqlalchemy.engine.url import URL
 from sqlalchemy.engine import reflection
 from sqlalchemy.orm import sessionmaker
@@ -16,27 +21,29 @@ import random
 import pkg_resources
 import os
 import sys
+import csv
 import sqlalchemy
 
 Engine = sqlalchemy.create_engine(
     URL(**settings.DATABASE), echo=settings.DEBUG)
 Session = sessionmaker(bind=Engine)
 
-s = Session()
 
-def has_tables():
+def dbsetup():
+    """Handle DB installation if needed."""
+    if not database_exists(Engine.url):
+        print >> sys.stderr, 'ERROR: database does not exist.'
+        sys.exit(1)
+
     inspector = reflection.Inspector.from_engine(Engine)
-    return any(inspector.get_table_names())
-
-if not database_exists(Engine.url):
-    print 'Database not found...'
-    sys.exit(1)
-    
-if not has_tables():
+    if any(inspector.get_table_names()):
+        return
     Base.metadata.create_all(Engine, checkfirst=True)
-    print 'creating tables...'
-    
+    print '[+] creating database tables ...'
+
+
 def inspect_csv(ctx, param, value):
+    """Inspect CSV file to ensure it follows strict requirements."""
     mimetype = mimetypes.guess_type(value, strict=True)[0]
     extension = mimetypes.guess_extension(mimetype, strict=True)
 
@@ -47,7 +54,7 @@ def inspect_csv(ctx, param, value):
     if not fsize >= 0 and fsize <= settings.MAX_BYTES:
         raise click.BadParameter(
             'CSV doesn\'t meet size requirements {0}K.'.format(
-                settings.MAX_BYTES))
+                settings.MAX_BYTES * 0.001))
     return value
 
 
@@ -81,9 +88,37 @@ def scan():
 
 
 @smap.command()
-@click.argument('fpath', type=click.Path(exists=True), callback=inspect_csv)
-def upload(fpath):
-    pass
+@click.argument('path', type=click.Path(exists=True), callback=inspect_csv)
+def upload(path):
+    """Upload DNS dump to database."""
+    with open(path, 'rb') as f:
+        session = Session()
+        dns_dump = csv.reader(f, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+        dns_dump.next()  # Ignore column header names
+        for record in dns_dump:
+            if record[1] in ('A', 'AAAA'):
+                external_ip = IP(ip_address=record[2])
+                internal_ip = IP(ip_address=record[3])
+
+                firewall_map = FirewallMap(
+                    internal_ip=internal_ip,
+                    external_ip=external_ip)
+                domain = Domain(name=record[0])
+                record_type = DNSRecordType(name=record[1])
+
+                dns_list = DNSList(
+                    domain=domain,
+                    record_type=record_type,
+                    firewall_map=firewall_map)
+
+                session.add_all([external_ip, internal_ip,
+                                 firewall_map, domain, record_type, dns_list])
+
+                try:
+                    session.commit()
+                except sqlalchemy.exc.SQLAlchemyError:
+                    session.rollback()
 
 if __name__ == '__main__':
+    dbsetup()
     sys.exit(smap())

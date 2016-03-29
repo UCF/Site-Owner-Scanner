@@ -1,10 +1,10 @@
 DEBUG = False
 
 DATABASE = {
-    'drivername':   '',
-    'host':         '',
-    'port':         '',
-    'username':     '',
-    'password':     '',
-    'database':     ''
+    'drivername': '',
+    'host': '',
+    'port': '',
+    'username': '',
+    'password': '',
+    'database': ''
 }
