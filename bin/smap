@@ -67,15 +67,17 @@ def welcome():
 @click.group()
 @click.version_option(version=settings.VERSION)
 def smap():
-    """Todo."""
+    """Map UCF site owners."""
 
 @smap.command()
 def scan():
+    """Start IP scanner."""
     welcome()
     click.echo('[*] scanning sites ...')
 
 @smap.command()
 def dbsetup():
+    """Create database tables if needed."""
     if not database_exists(Engine.url):
         print >> sys.stderr, 'ERROR: database does not exist.'
         sys.exit(1)
