@@ -15,7 +15,7 @@ class IP(Base):
     __tablename__ = 'ip'
 
     id = Column(Integer, primary_key=True)
-    ip_address = Column(IPAddressType, nullable=False, unique=True)
+    ip_address = Column(IPAddressType, nullable=False)
 
 
 class FirewallMap(Base):
@@ -95,7 +95,8 @@ class IPRange(Base):
     start_ip = Column(IPAddressType, nullable=False)
     end_ip = Column(IPAddressType, nullable=False)
     desc = Column(Text, nullable=True)
-    owner_email = Column(String(255), nullable=False)
+    dept = Column(String(255), nullable=False)
+    # owner_email = Column(String(255), nullable=False)
 
 
 class ScanResult(Base):

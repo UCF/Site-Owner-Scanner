@@ -1,18 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from smap import settings
 from smap.database import Base
 from smap.database import IP
+from smap.database import IPRange
 from smap.database import Domain
 from smap.database import FirewallMap
 from smap.database import DNSList
 from smap.database import DNSRecordType
-
-from smap import settings
 from smap.scanner import Scanner
-from sqlalchemy.engine.url import URL
+
 from sqlalchemy.engine import reflection
+from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import sessionmaker
+
 from sqlalchemy_utils import database_exists
 
 import click
@@ -29,20 +31,7 @@ Engine = sqlalchemy.create_engine(
 Session = sessionmaker(bind=Engine)
 
 
-def dbsetup():
-    """Handle DB installation if needed."""
-    if not database_exists(Engine.url):
-        print >> sys.stderr, 'ERROR: database does not exist.'
-        sys.exit(1)
-
-    inspector = reflection.Inspector.from_engine(Engine)
-    if any(inspector.get_table_names()):
-        return
-    Base.metadata.create_all(Engine, checkfirst=True)
-    print '[+] creating database tables ...'
-
-
-def inspect_csv(ctx, param, value):
+def check_csv(ctx, param, value):
     """Inspect CSV file to ensure it follows strict requirements."""
     mimetype = mimetypes.guess_type(value, strict=True)[0]
     extension = mimetypes.guess_extension(mimetype, strict=True)
@@ -78,23 +67,33 @@ def welcome():
 @click.group()
 @click.version_option(version=settings.VERSION)
 def smap():
-    pass
-
+    """Todo."""
 
 @smap.command()
 def scan():
     welcome()
     click.echo('[*] scanning sites ...')
 
-
 @smap.command()
-@click.argument('path', type=click.Path(exists=True), callback=inspect_csv)
-def upload(path):
-    """Upload DNS dump to database."""
+def dbsetup():
+    if not database_exists(Engine.url):
+        print >> sys.stderr, 'ERROR: database does not exist.'
+        sys.exit(1)
+    inspector = reflection.Inspector.from_engine(Engine)
+    if not any(inspector.get_table_names()):
+        Base.metadata.create_all(Engine, checkfirst=True)
+        print '[+] creating database tables' 
+        return
+    print 'skipped. Table(s) already exist.'
+
+@smap.command('import-dns-records')
+@click.option('--path', type=click.Path(exists=True), callback=check_csv)
+def upload_dns_records(path):
+    """Import DNS records to database."""
     with open(path, 'rb') as f:
         session = Session()
         dns_dump = csv.reader(f, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-        dns_dump.next()  # Ignore column header names
+        dns_dump.next()
         for record in dns_dump:
             if record[1] in ('A', 'AAAA'):
                 external_ip = IP(ip_address=record[2])
@@ -113,12 +112,36 @@ def upload(path):
 
                 session.add_all([external_ip, internal_ip,
                                  firewall_map, domain, record_type, dns_list])
-
                 try:
                     session.commit()
-                except sqlalchemy.exc.SQLAlchemyError:
+                except sqlalchemy.exc.SQLAlchemyError as error:
+                    print >> sys.stderr, 'ERROR: {0}'.format(str(error))
                     session.rollback()
+    session.close()
+
+@smap.command('import-domain-info')
+@click.option('--path', type=click.Path(exists=True), callback=check_csv)
+def upload_ip_ranges(path):
+    """Import IPMan domain ranges to database."""
+    with open(path, 'rb') as f:
+        session = Session()
+        ip_man_dump = csv.reader(f, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+        ip_man_dump.next()
+        for record in ip_man_dump:
+            if record[4] != 'All Off Campus Addresses':
+                ip_range = IPRange(
+                    start_ip=record[2],
+                    end_ip=record[3],
+                    desc=record[4],
+                    dept=record[5])
+
+                session.add(ip_range)
+                try:
+                    session.commit()
+                except sqlalchemy.exc.SQLAlchemyError as error:
+                    print >> sys.stderr, 'ERROR: {0}'.format(str(error))
+                    session.rollback()
+    session.close()
 
 if __name__ == '__main__':
-    dbsetup()
     sys.exit(smap())
