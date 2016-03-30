@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from contextlib import contextmanager
+
 from smap import settings
 from smap.database import Base
 from smap.database import IP
@@ -29,6 +31,60 @@ import sqlalchemy
 Engine = sqlalchemy.create_engine(
     URL(**settings.DATABASE), echo=settings.DEBUG)
 Session = sessionmaker(bind=Engine)
+
+
+@contextmanager
+def session_scope():
+    """Encapsulate session state in a wrapped context."""
+    session = Session()
+    try:
+        yield session
+        session.commit()
+    except sqlalchemy.exc.SQLAlchemyError as error:
+        print >> sys.stderr, 'ERROR: {0}'.format(str(error))
+        session.rollback()
+        sys.exit(1)
+    finally:
+        session.close()
+
+
+def load_dns_records(path, session):
+    """Helper for 'import-dns-records' command."""
+    with open(path, 'rb') as f:
+        dns_dump = csv.reader(f, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+        dns_dump.next()
+        for record in dns_dump:
+            if record[1] in ('A', 'AAAA'):
+                external_ip = IP(ip_address=record[2])
+                internal_ip = IP(ip_address=record[3])
+
+                firewall_map = FirewallMap(
+                    internal_ip=internal_ip,
+                    external_ip=external_ip)
+                domain = Domain(name=record[0])
+                record_type = DNSRecordType(name=record[1])
+
+                dns_list = DNSList(
+                    domain=domain,
+                    record_type=record_type,
+                    firewall_map=firewall_map)
+                session.add_all([external_ip, internal_ip,
+                                 firewall_map, domain, record_type, dns_list])
+
+
+def load_ipman_records(path, session):
+    """Helper for 'import-domain-info' command."""
+    with open(path, 'rb') as f:
+        ipman = csv.reader(f, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+        ipman.next()
+        for record in ipman:
+            if record[4] != 'All Off Campus Addresses':
+                ip_range = IPRange(
+                    start_ip=record[2],
+                    end_ip=record[3],
+                    desc=record[4],
+                    dept=record[5])
+                session.add(ip_range)
 
 
 def check_csv(ctx, param, value):
@@ -69,11 +125,13 @@ def welcome():
 def smap():
     """Map UCF site owners."""
 
+
 @smap.command()
 def scan():
     """Start IP scanner."""
     welcome()
     click.echo('[*] scanning sites ...')
+
 
 @smap.command()
 def dbsetup():
@@ -84,66 +142,25 @@ def dbsetup():
     inspector = reflection.Inspector.from_engine(Engine)
     if not any(inspector.get_table_names()):
         Base.metadata.create_all(Engine, checkfirst=True)
-        print '[+] creating database tables' 
+        print '[+] created database tables.'
         return
     print 'skipped. Table(s) already exist.'
+
 
 @smap.command('import-dns-records')
 @click.option('--path', type=click.Path(exists=True), callback=check_csv)
 def upload_dns_records(path):
     """Import DNS records to database."""
-    with open(path, 'rb') as f:
-        session = Session()
-        dns_dump = csv.reader(f, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-        dns_dump.next()
-        for record in dns_dump:
-            if record[1] in ('A', 'AAAA'):
-                external_ip = IP(ip_address=record[2])
-                internal_ip = IP(ip_address=record[3])
+    with session_scope() as session:
+        load_dns_records(path, session)
 
-                firewall_map = FirewallMap(
-                    internal_ip=internal_ip,
-                    external_ip=external_ip)
-                domain = Domain(name=record[0])
-                record_type = DNSRecordType(name=record[1])
-
-                dns_list = DNSList(
-                    domain=domain,
-                    record_type=record_type,
-                    firewall_map=firewall_map)
-
-                session.add_all([external_ip, internal_ip,
-                                 firewall_map, domain, record_type, dns_list])
-                try:
-                    session.commit()
-                except sqlalchemy.exc.SQLAlchemyError as error:
-                    print >> sys.stderr, 'ERROR: {0}'.format(str(error))
-                    session.rollback()
-    session.close()
 
 @smap.command('import-domain-info')
 @click.option('--path', type=click.Path(exists=True), callback=check_csv)
 def upload_ip_ranges(path):
     """Import IPMan domain ranges to database."""
-    with open(path, 'rb') as f:
-        session = Session()
-        ip_man_dump = csv.reader(f, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-        ip_man_dump.next()
-        for record in ip_man_dump:
-            if record[4] != 'All Off Campus Addresses':
-                ip_range = IPRange(
-                    start_ip=record[2],
-                    end_ip=record[3],
-                    desc=record[4],
-                    dept=record[5])
-
-                session.add(ip_range)
-                try:
-                    session.commit()
-                except sqlalchemy.exc.SQLAlchemyError as error:
-                    print >> sys.stderr, 'ERROR: {0}'.format(str(error))
-                    session.rollback()
-    session.close()
+    with session_scope() as session:
+        load_ipman_records(path, session)
 
 if __name__ == '__main__':
     sys.exit(smap())
