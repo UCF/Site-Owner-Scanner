@@ -56,7 +56,10 @@ def load_dns_records(path, session):
         for record in dns_dump:
             if record[1] in ('A', 'AAAA'):
                 external_ip = IP(ip_address=' '.join(record[2].split()))
-                internal_ip = IP(ip_address=' '.join(record[3].split()))
+                if record[3] == '#N/A':
+                    internal_ip = IP(ip_address=None)
+                else:
+                    internal_ip = IP(ip_address=' '.join(record[3].split()))
                 firewall_map = FirewallMap(
                     internal_ip=internal_ip,
                     external_ip=external_ip)

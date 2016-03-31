@@ -15,7 +15,7 @@ class IP(Base):
     __tablename__ = 'ip'
 
     id = Column(Integer, primary_key=True)
-    ip_address = Column(IPAddressType, nullable=False)
+    ip_address = Column(IPAddressType, nullable=True)
 
 
 class FirewallMap(Base):
