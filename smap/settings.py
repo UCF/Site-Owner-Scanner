@@ -1,4 +1,5 @@
 import pkg_resources
+import sys
 
 # Program version number
 VERSION = pkg_resources.get_distribution('smap').version
@@ -26,7 +27,6 @@ USER_AGENTS = (
 try:
     from settings_local import *
 except ImportError:
-    raise Exception(
-        'Local settings file was not found. '
+    print >> sys.stderr, 'ERROR: local settings file was not found. ' \
         'Ensure settings_local.py exists in smap root.'
-    )
+    sys.exit(1)
