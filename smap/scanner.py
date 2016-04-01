@@ -1,73 +1,84 @@
+from datetime import datetime
+from smap.db import DNSList
+from smap.db import ScanInstance
+from smap.db import ScanResult
 from urlparse import urlparse
 
-import csv
 import re
+import getpass
 import grequests
 import settings
 import sys
+import time
 import random
 
-
-def on_success(response, **kwargs):
-    url, port = response.url, urlparse(response.url).port
-    if response.status_code != 200:
-        print >> sys.stderr, '<{code}> response for {url}'.format(
-            code=response.status_code, url=url)
-        return
-    print 'port {port} is reachable for {url}'.format(port=port, url=url)
+SUPPORTED = dict(http=80, https=443)
 
 
-def handle_errors(request, exception):
-    print 'ERROR: request failed {url} => {error}'.format(url=request.url, error=exception.message)
+def add_port(protocol):
+    return SUPPORTED.get(protocol, 80)
 
 
-class Scanner(object):
+def add_host(host):
+    return host if re.match(
+        r'^(ucf\.edu|.*ucf\.edu)', host) else '{host}.ucf.edu'.format(host=host)
 
-    PROTOCOLS = ('http', 'https')
 
-    def __init__(self, path):
-        self.path = path
+def url_factory(self):
+    """Generate URLs to scan for a given protocol."""
+    def by_protocol(protocol, session):
+        if protocol not in SUPPORTED.keys():
+            print >> sys.stderr, 'ERROR: \'{invalid}\' is currently not supported. Try: {supported}.'.format(
+                invalid=protocol, supported=SUPPORTED.keys())
+            sys.exit(1)
 
-    @staticmethod
-    def __add_host(host):
-        return host if re.match(
-            r'^(ucf\.edu|.*ucf\.edu)', host) else '{host}.ucf.edu'.format(host=host)
+        mappings = []
+        for record in session.query(DNSList).all():
+            domain_name = record.domain.name
+            external_ip = record.firewall_map.external_ip.ip_address
+            mappings.append(
+                ('{host}'.format(
+                    host=add_host(domain_name)),
+                    '{protocol}://{ipaddr}:{port}'.format(
+                    protocol=protocol,
+                    ipaddr=str(external_ip),
+                    port=add_port(protocol))))
+        return mappings
+    return by_protocol
 
-    @staticmethod
-    def __add_port(protocol):
-        return 80 if protocol == Scanner.PROTOCOLS[0] else 443
 
-    def url_factory(self):
-        def by_protocol(protocol):
-            if protocol not in self.PROTOCOLS:
-                print >> sys.stderr, 'ERROR: \'{given}\' is not supported. Try: {supported}'.format(
-                    given=protocol, supported=self.PROTOCOLS)
-                sys.exit(1)
+def handle_errors():
+    pass
 
-            with open(self.path, 'rb') as dump:
-                dns_dump = csv.reader(
-                    dump, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-                dns_dump.next()
 
-                record_types = ('A', 'AAAA')
-                return [('{host}'.format(host=self.__add_host(record[0])), '{protocol}://{ipaddr}:{port}'.format(
-                    protocol=protocol, ipaddr=record[2], port=self.__add_port(protocol))) for record in dns_dump if record[1] in record_types]
-        return by_protocol
+def handle_200_ok():
+    pass
 
-    def scan(self):
-        url_factory = self.url_factory()
-        urls = url_factory(self.PROTOCOLS[0]) + url_factory(self.PROTOCOLS[1])
-        user_agent = random.choice(settings.USER_AGENTS)
 
-        async_requests = [
-            grequests.head(
-                url=url,
-                allow_redirects=False,
-                headers={'User-Agent': user_agent, 'Host': host},
-                hooks={'response': on_success},
-                timeout=settings.TIMEOUT
-            ) for host, url in urls]
-        grequests.map(
-            requests=async_requests,
-            size=settings.CONCURRENT_REQUESTS,
-            exception_handler=handle_errors)
+def scan(session):
+    start_time = datetime.now()
+    author = getpass.getuser()
+    http, https = SUPPORTED.keys()[0], SUPPORTED.keys()[1]
+    url_factory = url_factory()
+    urls = url_factory(http) + url_factory(https)
+
+    async_requests = [
+        grequests.head(
+            url=url,
+            allow_redirects=False,
+            headers={
+                'User-Agent': random.choice(settings.USER_AGENTS), 'Host': host},
+            hooks={'response': handle_200_ok},
+            timeout=settings.TIMEOUT) for host, url in urls]
+    grequests.map(
+        requests=async_requests,
+        size=settings.CONCURRENT_REQUESTS,
+        exception_handler=handle_errors)
+
+    end_time = datetime.now() - start_time
+
+    scan_instance = ScanInstance(
+        start_time=start_time,
+        end_time=end_time,
+        author=author)
+    session.add(scan_instance)

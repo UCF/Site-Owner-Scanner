@@ -5,105 +5,26 @@ from contextlib import contextmanager
 
 from smap import settings
 from smap.database import Base
-from smap.database import IP
-from smap.database import IPRange
-from smap.database import Domain
-from smap.database import FirewallMap
-from smap.database import DNSList
-from smap.database import DNSRecordType
-from smap.scanner import Scanner
+from smap.parser import parse_dns_records
+from smap.parser import parse_domain_info
+from smap.scanner import scan as run
 
 from sqlalchemy.engine import reflection
-from sqlalchemy.engine.url import URL
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.engine.url import URL
 
 from sqlalchemy_utils import database_exists
 
 import click
 import mimetypes
-import random
-import pkg_resources
 import os
-import sys
-import csv
 import sqlalchemy
+import sys
 
 Engine = sqlalchemy.create_engine(
     URL(**settings.DATABASE), echo=settings.DEBUG)
 Session = sessionmaker(bind=Engine)
-
-
-@contextmanager
-def session_scope():
-    """Encapsulate session state in a wrapped context."""
-    session = Session()
-    try:
-        yield session
-        session.commit()
-    except sqlalchemy.exc.SQLAlchemyError as error:
-        print >> sys.stderr, 'ERROR: {0}'.format(str(error))
-        session.rollback()
-        sys.exit(1)
-    finally:
-        session.close()
-
-
-def load_dns_records(path, session):
-    """Helper for 'import-dns-records' command."""
-    with open(path, 'rb') as f:
-        dns_dump = csv.reader(f, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-        dns_dump.next()
-        for record in dns_dump:
-            if record[1] in ('A', 'AAAA'):
-                external_ip = IP(ip_address=' '.join(record[2].split()))
-                if record[3] == '#N/A':
-                    internal_ip = IP(ip_address=None)
-                else:
-                    internal_ip = IP(ip_address=' '.join(record[3].split()))
-                firewall_map = FirewallMap(
-                    internal_ip=internal_ip,
-                    external_ip=external_ip)
-                domain = Domain(name=' '.join(record[0].split()))
-                record_type = DNSRecordType(name=' '.join(record[1].split()))
-                dns_list = DNSList(
-                    domain=domain,
-                    record_type=record_type,
-                    firewall_map=firewall_map)
-
-                session.add_all([external_ip, internal_ip,
-                                 firewall_map, domain, record_type, dns_list])
-
-
-def load_ipman_records(path, session):
-    """Helper for 'import-domain-info' command."""
-    with open(path, 'rb') as f:
-        ipman = csv.reader(f, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-        ipman.next()
-        for record in ipman:
-            if record[4] != 'All Off Campus Addresses':
-                ip_range = IPRange(
-                    start_ip=' '.join(record[2].split()),
-                    end_ip=' '.join(record[3].split()),
-                    desc=' '.join(record[4].split()),
-                    dept=' '.join(record[5].split()))
-
-                session.add(ip_range)
-
-
-def check_csv(ctx, param, value):
-    """Inspect CSV file to ensure it follows strict requirements."""
-    mimetype = mimetypes.guess_type(value, strict=True)[0]
-    extension = mimetypes.guess_extension(mimetype, strict=True)
-
-    if mimetype != 'text/csv' or extension != '.csv':
-        raise click.BadParameter('\'{0}\' is not a CSV file.'.format(value))
-
-    fsize = os.stat(value).st_size
-    if not fsize >= 0 and fsize <= settings.MAX_BYTES:
-        raise click.BadParameter(
-            'CSV doesn\'t meet size requirements {0}K.'.format(
-                settings.MAX_BYTES * 0.001))
-    return value
 
 
 def welcome():
@@ -123,6 +44,39 @@ def welcome():
     """.format(settings.VERSION)
 
 
+@contextmanager
+def session_scope():
+    """Encapsulate session state in a wrapped context."""
+    session = Session()
+    try:
+        yield session
+        session.commit()
+    except SQLAlchemyError as error:
+        print >> sys.stderr, 'ERROR: {0}'.format(str(error))
+        session.rollback()
+        sys.exit(1)
+    finally:
+        session.close()
+
+
+def is_csv(ctx, param, value):
+    """Inspect CSV file to ensure it follows strict requirements."""
+    mimetype = mimetypes.guess_type(value, strict=True)[0]
+    extension = mimetypes.guess_extension(mimetype, strict=True)
+
+    if mimetype != 'text/csv' or extension != '.csv':
+        raise click.BadParameter('\'{0}\' is not a CSV file.'.format(value))
+
+    fsize = os.stat(value).st_size
+    if not fsize >= 0 and fsize <= settings.MAX_BYTES:
+        raise click.BadParameter(
+            'CSV doesn\'t meet size requirements {0}K.'.format(
+                settings.MAX_BYTES * 0.001))
+    return value
+
+
+### API ###
+
 @click.group()
 @click.version_option(version=settings.VERSION)
 def smap():
@@ -135,11 +89,11 @@ def scan():
     welcome()
     click.echo('[*] scanning sites ...')
     with session_scope() as session:
-        pass
+        run(session)
 
 
 @smap.command()
-def dbsetup():
+def setupdb():
     """Create database tables if needed."""
     if not database_exists(Engine.url):
         print >> sys.stderr, 'ERROR: database does not exist.'
@@ -152,20 +106,20 @@ def dbsetup():
     print 'skipped. Table(s) already exist.'
 
 
-@smap.command('import-dns-records')
-@click.option('--path', type=click.Path(exists=True), callback=check_csv)
-def upload_dns_records(path):
-    """Import DNS records to database."""
+@smap.command('insert-dns-records')
+@click.option('--target', type=click.Path(exists=True), callback=is_csv)
+def insert_dns_records(target):
+    """Insert DNS records to database."""
     with session_scope() as session:
-        load_dns_records(path, session)
+        parse_dns_records(target, session)
 
 
-@smap.command('import-domain-info')
-@click.option('--path', type=click.Path(exists=True), callback=check_csv)
-def upload_ip_ranges(path):
-    """Import IPMan domain ranges to database."""
+@smap.command('insert-domain-info')
+@click.option('--target', type=click.Path(exists=True), callback=is_csv)
+def insert_domain_info(target):
+    """Insert IPMan records to database."""
     with session_scope() as session:
-        load_ipman_records(path, session)
+        parse_domain_info(target, session)
 
 if __name__ == '__main__':
     sys.exit(smap())
