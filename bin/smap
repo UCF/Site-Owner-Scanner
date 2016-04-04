@@ -4,7 +4,7 @@
 from contextlib import contextmanager
 
 from smap import settings
-from smap.database import Base
+from smap.models import Base
 from smap.parser import parse_dns_records
 from smap.parser import parse_domain_info
 from smap.scanner import scan as run
@@ -46,7 +46,7 @@ def welcome():
 
 @contextmanager
 def session_scope():
-    """Encapsulate session state in a wrapped context."""
+    """Yield session state in a controlled context."""
     session = Session()
     try:
         yield session

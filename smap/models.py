@@ -12,6 +12,7 @@ Base = declarative_base()
 
 
 class IP(Base):
+
     __tablename__ = 'ip'
 
     id = Column(Integer, primary_key=True)
@@ -19,13 +20,14 @@ class IP(Base):
 
 
 class FirewallMap(Base):
+
     __tablename__ = 'firewall_map'
 
     id = Column(Integer, primary_key=True)
     internal_ip_id = Column(Integer, ForeignKey('ip.id'), nullable=False)
     external_ip_id = Column(Integer, ForeignKey('ip.id'), nullable=False)
 
-    # Relationships
+    ### Relationships ###
     internal_ip = relationship(
         'IP',
         foreign_keys=[internal_ip_id],
@@ -37,6 +39,7 @@ class FirewallMap(Base):
 
 
 class DNSList(Base):
+
     __tablename__ = 'dns_list'
 
     id = Column(Integer, primary_key=True)
@@ -51,7 +54,7 @@ class DNSList(Base):
         ForeignKey('firewall_map.id'),
         nullable=False)
 
-    # Relationships
+    ### Relationships ###
     domain = relationship(
         'Domain',
         foreign_keys=[domain_id],
@@ -67,6 +70,7 @@ class DNSList(Base):
 
 
 class Domain(Base):
+
     __tablename__ = 'domain'
 
     id = Column(Integer, primary_key=True)
@@ -74,6 +78,7 @@ class Domain(Base):
 
 
 class DNSRecordType(Base):
+
     __tablename__ = 'dns_record'
 
     id = Column(Integer, primary_key=True)
@@ -81,6 +86,7 @@ class DNSRecordType(Base):
 
 
 class DNSServer(Base):
+
     __tablename__ = 'dns_server'
 
     id = Column(Integer, primary_key=True)
@@ -89,26 +95,31 @@ class DNSServer(Base):
 
 
 class IPRange(Base):
+
     __tablename__ = 'ip_range'
 
     id = Column(Integer, primary_key=True)
     start_ip = Column(IPAddressType, nullable=False)
     end_ip = Column(IPAddressType, nullable=False)
-    desc = Column(Text, nullable=True)
+    description = Column(Text, nullable=True)
     dept = Column(String(255), nullable=False)
     # owner_email = Column(String(255), nullable=False)
 
 
 class ScanResult(Base):
+
     __tablename__ = 'scan_result'
 
     id = Column(Integer, primary_key=True)
     port = Column(Integer, nullable=False)
     protocol = Column(String(10), nullable=False)
+    response_code = Column(Integer, nullable=True)
+    message = Column(Text, nullable=True)
+
     ip_id = Column(Integer, ForeignKey('ip.id'), nullable=False)
     domain_id = Column(Integer, ForeignKey('domain.id'), nullable=False)
 
-    # Relationships
+    ### Relationships ###
     ip = relationship('IP', foreign_keys=[ip_id], backref='scan_results')
     domain = relationship(
         'Domain',
@@ -117,6 +128,7 @@ class ScanResult(Base):
 
 
 class ScanInstance(Base):
+
     __tablename__ = 'scan_instance'
 
     id = Column(Integer, primary_key=True)
