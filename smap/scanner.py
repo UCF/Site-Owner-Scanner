@@ -13,6 +13,7 @@ import time
 import random
 
 SUPPORTED = dict(http=80, https=443)
+SESSION = None
 
 
 def add_port(protocol):
@@ -63,8 +64,7 @@ def handle_errors(request, exception):
         response_code=response_code,
         message=message)
 
-    # todo: obtain session obj
-    # session.add(scan_result)
+    SESSION.add(scan_result)
 
 
 def response_hook(response, *args, **kwargs):
@@ -80,12 +80,12 @@ def response_hook(response, *args, **kwargs):
         response_code=response_code,
         message=None)
 
-    # todo: obtain session obj
-    # session.add(scan_result)
+    SESSION.add(scan_result)
 
 
 def scan(session):
     """Start scan and record results."""
+    SESSION = session
     start_time = datetime.now()
     author = getpass.getuser()
     http, https = SUPPORTED.keys()[0], SUPPORTED.keys()[1]
@@ -110,4 +110,4 @@ def scan(session):
         start_time=start_time,
         end_time=end_time,
         author=author)
-    session.add(scan_instance)
+    SESSION.add(scan_instance)
