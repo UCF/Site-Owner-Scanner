@@ -58,6 +58,6 @@ def parse_domain_info(target, session):
                 ip_range = IPRange(
                     start_ip=' '.join(record[2].split()),
                     end_ip=' '.join(record[3].split()),
-                    desc=' '.join(record[4].split()),
+                    description=' '.join(record[4].split()),
                     dept=' '.join(record[5].split()))
                 session.add(ip_range)
