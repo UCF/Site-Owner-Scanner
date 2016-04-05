@@ -84,7 +84,7 @@ def smap():
 def scan():
     """Start IP scanner."""
     welcome()
-    click.echo('[*] scanning sites ...')
+    click.echo('[*] starting scan ...')
     with session_scope() as session:
         Scanner().scan(session)
 

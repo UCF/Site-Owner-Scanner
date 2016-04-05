@@ -1,7 +1,12 @@
-from datetime import datetime
+try:
+    from ipaddress import ip_address
+except ImportError:
+    from ipaddr import IPAddress as ip_address
+
 from models import DNSList
 from models import ScanInstance
 from models import ScanResult
+from time import strftime
 from urlparse import urlparse
 
 import re
@@ -72,10 +77,11 @@ class Scanner(object):
             protocol=protocol,
             response_code=response_code,
             message=message)
+        # ip = ip_address(re.search(r'(\d{1,3}\.){3}\d{1,3}', request.url).group(0))
         self.session.add(scan_result)
 
     def scan(self, session):
-        start_time = datetime.now()
+        start_time = strftime('%Y-%m-%d %H:%M:%S')
         self.session = session
         author = getpass.getuser()
         http, https = self.supported.keys()[0], self.supported.keys()[1]
@@ -95,7 +101,7 @@ class Scanner(object):
             size=settings.CONCURRENT_REQUESTS,
             exception_handler=self.__failure_hook)
 
-        end_time = datetime.now()
+        end_time = strftime('%Y-%m-%d %H:%M:%S')
         scan_instance = ScanInstance(
             start_time=start_time,
             end_time=end_time,
