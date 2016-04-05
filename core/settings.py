@@ -1,8 +1,7 @@
-import pkg_resources
 import sys
 
 # Program version number
-VERSION = pkg_resources.get_distribution('smap').version
+VERSION = '0.1'
 # Default request timeout
 TIMEOUT = 10
 # Amount of requests to make at a time

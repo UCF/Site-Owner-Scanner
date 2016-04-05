@@ -3,11 +3,10 @@
 
 from contextlib import contextmanager
 
-from smap import settings
-from smap.models import Base
-from smap.parser import parse_dns_records
-from smap.parser import parse_domain_info
-from smap.scanner import scan as run
+from core import settings
+from core.models import Base
+from core.parser import Parser
+from core.scanner import Scanner
 
 from sqlalchemy.engine import reflection
 from sqlalchemy.exc import SQLAlchemyError
@@ -75,8 +74,6 @@ def is_csv(ctx, param, value):
     return value
 
 
-### API ###
-
 @click.group()
 @click.version_option(version=settings.VERSION)
 def smap():
@@ -89,7 +86,7 @@ def scan():
     welcome()
     click.echo('[*] scanning sites ...')
     with session_scope() as session:
-        run(session)
+        Scanner().scan(session)
 
 
 @smap.command()
@@ -111,7 +108,7 @@ def setupdb():
 def insert_dns_records(target):
     """Insert DNS records to database."""
     with session_scope() as session:
-        parse_dns_records(target, session)
+        Parser().parse_dns_records(target, session)
 
 
 @smap.command('insert-domain-info')
@@ -119,7 +116,7 @@ def insert_dns_records(target):
 def insert_domain_info(target):
     """Insert IPMan records to database."""
     with session_scope() as session:
-        parse_domain_info(target, session)
+        Parser().parse_domain_info(target, session)
 
 if __name__ == '__main__':
     sys.exit(smap())

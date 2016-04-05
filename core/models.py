@@ -27,7 +27,6 @@ class FirewallMap(Base):
     internal_ip_id = Column(Integer, ForeignKey('ip.id'), nullable=False)
     external_ip_id = Column(Integer, ForeignKey('ip.id'), nullable=False)
 
-    ### Relationships ###
     internal_ip = relationship(
         'IP',
         foreign_keys=[internal_ip_id],
@@ -44,17 +43,18 @@ class DNSList(Base):
 
     id = Column(Integer, primary_key=True)
     domain_id = Column(Integer, ForeignKey('domain.id'), nullable=False)
+
     record_type_id = Column(
         Integer,
         ForeignKey('dns_record.id'),
         nullable=False)
+    # Not included in spreadsheet, but we'll need this at some point
     # dns_server = Column(IPAddressType, ForeignKey('dns_server.ip'))
     firewall_map_id = Column(
         Integer,
         ForeignKey('firewall_map.id'),
         nullable=False)
 
-    ### Relationships ###
     domain = relationship(
         'Domain',
         foreign_keys=[domain_id],
@@ -103,6 +103,7 @@ class IPRange(Base):
     end_ip = Column(IPAddressType, nullable=False)
     description = Column(Text, nullable=True)
     dept = Column(String(255), nullable=False)
+    # As of now, we don't have email addresses included
     # owner_email = Column(String(255), nullable=False)
 
 
@@ -119,7 +120,6 @@ class ScanResult(Base):
     ip_id = Column(Integer, ForeignKey('ip.id'), nullable=False)
     domain_id = Column(Integer, ForeignKey('domain.id'), nullable=False)
 
-    ### Relationships ###
     ip = relationship('IP', foreign_keys=[ip_id], backref='scan_results')
     domain = relationship(
         'Domain',
