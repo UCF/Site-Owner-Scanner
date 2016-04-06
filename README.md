@@ -1,5 +1,20 @@
 # Site-Owner-Scanner
-todo
+
+```
+Usage: smap.py [OPTIONS] COMMAND [ARGS]...
+
+  Map UCF site owners.
+
+Options:
+  --version  Show the version and exit.
+  --help     Show this message and exit.
+
+Commands:
+  insert-dns-records  Insert DNS records to database.
+  insert-domain-info  Insert IPMan records to database.
+  scan                Start IP scanner.
+  setupdb             Create database tables if needed.
+```
 
 ## Kudos:
 * Jim Barnes
