@@ -1,12 +1,12 @@
 **High Priority**
-- Add Jenkins
-- Deploy
-- Unit tests (Nose)
+> 1. Add to Jenkins
+> 2. Deploy
+> 3. Unit tests (Nose)
 
 **Medium Priority**
-- Load CSV files as a singular task (currently two)
-- Standardize DNS internal and external IP mappings
-- Ensure CSV fields are validated before processing
+> 1. Standardize DNS IP mappings in spreadsheet
+> 2. Load CSV files as singular task (currently two)
+
 
 **Low Priority**
-- Add usage examples (setup, install, etc)
+> 1. Add usage scenarios
