@@ -85,7 +85,7 @@ class Scanner(object):
         message = request.exception.message
 
         domain = request.headers['Host']
-        ipaddr = re.search(r'(\d{1,3}\.){3}\d{1,3}', response.url).group(0)
+        ipaddr = re.search(r'(\d{1,3}\.){3}\d{1,3}', request.url).group(0)
 
         ip = IP(ip_address=ipaddr)
         scan_result = ScanResult(
