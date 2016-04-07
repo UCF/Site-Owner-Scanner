@@ -72,7 +72,7 @@ class Scanner(object):
             ip=ip,
             domain=domain)
         self.session.add(scan_result)
-        print '{url} is alive on port {port}'.format(strftime(url=response.url, port=port)
+        print '{url} is alive on port {port}'.format(strftime(url=response.url, port=port))
 
     def __failure_hook(self, request, exception):
         url = urlparse(request.url)
