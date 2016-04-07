@@ -59,19 +59,31 @@ class Scanner(object):
         port = url.port
         protocol = url.scheme
         response_code = response.status_code
-        ipv4_addr = re.search(r'(\d{1,3}\.){3}\d{1,3}', response.url).group(0)
+        message = None
+        ipv4_address = re.search(
+            r'(\d{1,3}\.){3}\d{1,3}',
+            response.url).group(0)
 
-        ip = IP(ip_address=ipv4_addr)
-        # We'll need to tie back a domain by this specific IP address
+        dns_list = self.session.query(DNSList).all()
+
+        results = []
+        for record in dns_list:
+            if record.firewall_map.external_ip.ip_address == ip_address(
+                    ipv4_addr):
+                results.append(record)
+
+        ip = IP(ip_address=ipv4_address)
+        domain = results[0].domain.name
 
         scan_result = ScanResult(
             port=port,
             protocol=protocol,
             response_code=response_code,
-            message=None,
+            message=message,
             ip=ip,
             domain=domain)
         self.session.add(scan_result)
+
         print '{url} is alive on port {port}'.format(url=response.url, port=port)
 
     def __failure_hook(self, request, exception):
@@ -80,12 +92,22 @@ class Scanner(object):
         protocol = url.scheme
         response_code = None
         message = request.exception.message
-        ipv4_addr = re.search(r'(\d{1,3}\.){3}\d{1,3}', request.url).group(0)
+        ipv4_address = re.search(
+            r'(\d{1,3}\.){3}\d{1,3}',
+            request.url).group(0)
 
-        ip = IP(ip_address=ipv4_addr)
-        # Same as above ...
+        dns_list = self.session.query(DNSList).all()
 
-        scan_result=ScanResult(
+        results = []
+        for record in dns_list:
+            if record.firewall_map.external_ip.ip_address == ip_address(
+                    ipv4_addr):
+                results.append(record)
+
+        ip = IP(ip_address=ipv4_address)
+        domain = results[0].domain.name
+
+        scan_result = ScanResult(
             port=port,
             protocol=protocol,
             response_code=response_code,
@@ -102,7 +124,7 @@ class Scanner(object):
         url_factory = self.__url_factory()
         urls = url_factory(http, session) + url_factory(https, session)
 
-        async_requests=[
+        async_requests = [
             grequests.head(
                 url=url,
                 allow_redirects=False,
@@ -115,8 +137,8 @@ class Scanner(object):
             size=settings.CONCURRENT_REQUESTS,
             exception_handler=self.__failure_hook)
 
-        end_time=strftime('%Y-%m-%d %H:%M:%S')
-        scan_instance=ScanInstance(
+        end_time = strftime('%Y-%m-%d %H:%M:%S')
+        scan_instance = ScanInstance(
             start_time=start_time,
             end_time=end_time,
             author=author)
