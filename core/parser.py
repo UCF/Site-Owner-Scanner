@@ -31,8 +31,7 @@ class Parser(object):
             external.next()
             for record in external:
                 # Filter DNS record types by IPv4 or IPv6 address spaces (A, AAAA)
-                # As of now, we only really need to check for valid IPv4
-                # addresses
+                # As of now, we only really need to check for valid IPv4 addresses
                 if record[1] in self.record_types:
                     external_ip = IP(ip_address=' '.join(record[2].split()))
                     if not self.__is_ipv4(record[3]):

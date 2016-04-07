@@ -60,21 +60,11 @@ class Scanner(object):
         protocol = url.scheme
         response_code = response.status_code
         message = None
-        ipv4_address = re.search(
-            r'(\d{1,3}\.){3}\d{1,3}',
-            response.url).group(0)
 
-        dns_list = self.session.query(DNSList).all()
+        domain = response.request.headers['Host']
+        ipaddr = re.search(r'(\d{1,3}\.){3}\d{1,3}', response.url).group(0)
 
-        results = []
-        for record in dns_list:
-            if record.firewall_map.external_ip.ip_address == ip_address(
-                    ipv4_addr):
-                results.append(record)
-
-        ip = IP(ip_address=ipv4_address)
-        domain = results[0].domain.name
-
+        ip = IP(ip_address=ipaddr)
         scan_result = ScanResult(
             port=port,
             protocol=protocol,
@@ -84,7 +74,7 @@ class Scanner(object):
             domain=domain)
         self.session.add(scan_result)
 
-        print '{url} is alive on port {port}'.format(url=response.url, port=port)
+        print '{domain} is alive on port {port} with IP {ipaddr}'.format(domain=domain, port=port, ipaddr=ipaddr)
 
     def __failure_hook(self, request, exception):
         url = urlparse(request.url)
@@ -92,21 +82,11 @@ class Scanner(object):
         protocol = url.scheme
         response_code = None
         message = request.exception.message
-        ipv4_address = re.search(
-            r'(\d{1,3}\.){3}\d{1,3}',
-            request.url).group(0)
 
-        dns_list = self.session.query(DNSList).all()
+        domain = request.headers['Host']
+        ipaddr = re.search(r'(\d{1,3}\.){3}\d{1,3}', response.url).group(0)
 
-        results = []
-        for record in dns_list:
-            if record.firewall_map.external_ip.ip_address == ip_address(
-                    ipv4_addr):
-                results.append(record)
-
-        ip = IP(ip_address=ipv4_address)
-        domain = results[0].domain.name
-
+        ip = IP(ip_address=ipaddr)
         scan_result = ScanResult(
             port=port,
             protocol=protocol,
