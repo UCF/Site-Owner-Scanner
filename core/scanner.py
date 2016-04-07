@@ -32,11 +32,11 @@ class Scanner(object):
 
     @staticmethod
     def __add_port(protocol):
-        return supported.get(protocol, 80)
+        return Scanner.supported.get(protocol, 80)
 
     def __url_factory(self):
         def by_protocol(protocol, session):
-            if protocol not in supported:
+            if protocol not in self.supported:
                 print >> sys.stderr, 'ERROR: \'{protocol}\' is not supported.'.format(
                     protocol=protocol)
                 sys.exit(1)
@@ -46,11 +46,11 @@ class Scanner(object):
                 external_ip = record.firewall_map.external_ip.ip_address
                 mappings.append(
                     ('{host}'.format(
-                        host=__add_host(domain_name)),
+                        host=self.__add_host(domain_name)),
                         '{protocol}://{ipaddr}:{port}'.format(
                         protocol=protocol,
                         ipaddr=str(external_ip),
-                        port=__add_port(protocol))))
+                        port=self.__add_port(protocol))))
             return mappings
         return by_protocol
 
@@ -59,12 +59,20 @@ class Scanner(object):
         port = url.port
         protocol = url.scheme
         response_code = response.status_code
+        ipv4_addr = re.search(r'(\d{1,3}\.){3}\d{1,3}', response.url).group(0)
+
+        ip = IP(ip_address=ipv4_addr)
+        # We'll need to tie back a domain by this specific IP address
+
         scan_result = ScanResult(
             port=port,
             protocol=protocol,
             response_code=response_code,
-            message=None)
+            message=None,
+            ip=ip,
+            domain=domain)
         self.session.add(scan_result)
+        print '{url} is alive on port {port}'.format(strftime(url=response.url, port=port)
 
     def __failure_hook(self, request, exception):
         url = urlparse(request.url)
@@ -72,12 +80,18 @@ class Scanner(object):
         protocol = url.scheme
         response_code = None
         message = request.exception.message
-        scan_result = ScanResult(
+        ipv4_addr = re.search(r'(\d{1,3}\.){3}\d{1,3}', request.url).group(0)
+
+        ip = IP(ip_address=ipv4_addr)
+        # Same as above ...
+
+        scan_result=ScanResult(
             port=port,
             protocol=protocol,
             response_code=response_code,
-            message=message)
-        # ip = ip_address(re.search(r'(\d{1,3}\.){3}\d{1,3}', request.url).group(0))
+            message=message,
+            ip=ip,
+            domain=domain)
         self.session.add(scan_result)
 
     def scan(self, session):
@@ -86,9 +100,9 @@ class Scanner(object):
         author = getpass.getuser()
         http, https = self.supported.keys()[0], self.supported.keys()[1]
         url_factory = self.__url_factory()
-        scan_urls = url_factory(http) + url_factory(https)
+        urls = url_factory(http, session) + url_factory(https, session)
 
-        async_requests = [
+        async_requests=[
             grequests.head(
                 url=url,
                 allow_redirects=False,
@@ -101,8 +115,8 @@ class Scanner(object):
             size=settings.CONCURRENT_REQUESTS,
             exception_handler=self.__failure_hook)
 
-        end_time = strftime('%Y-%m-%d %H:%M:%S')
-        scan_instance = ScanInstance(
+        end_time=strftime('%Y-%m-%d %H:%M:%S')
+        scan_instance=ScanInstance(
             start_time=start_time,
             end_time=end_time,
             author=author)
