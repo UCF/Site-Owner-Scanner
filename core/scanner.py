@@ -16,6 +16,7 @@ import settings
 import sys
 import time
 import random
+from functools import reduce
 
 
 class Scanner(object):
@@ -77,6 +78,15 @@ class Scanner(object):
         print '{domain} is alive on port {port} with IP {ipaddr}'.format(
             domain=domain, port=port, ipaddr=ipaddr)
 
+    def __find_owner(self, ip):
+        def ip2int(ip):
+            return reduce(lambda x, y: x << 8 | y, map(int, ip.split('.')))
+
+        for record in self.session.query(IPRange).all():
+            min, max = ip2int(record.start_ip), ip2int(record.end_ip)
+            if ip2int(ip) >= min and ip2int(ip) <= max:
+                return record.dept
+
     def __failure_hook(self, request, exception):
         url = urlparse(request.url)
         port = url.port
@@ -96,6 +106,10 @@ class Scanner(object):
             ip=ip,
             domain=domain)
         self.session.add(scan_result)
+
+        owner = self.__find_owner(ipaddr)
+        print '{domain} is unreachable on port {port} with {ipaddr}, please contact: '.format(
+            domain=domain, port=port, ipaddr=ipaddr, owner=owner)
 
     def scan(self, session):
         start_time = strftime('%Y-%m-%d %H:%M:%S')

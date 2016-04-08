@@ -48,8 +48,10 @@ class DNSList(Base):
         Integer,
         ForeignKey('dns_record.id'),
         nullable=False)
+
     # Not included in spreadsheet, but we'll need this at some point
     # dns_server = Column(IPAddressType, ForeignKey('dns_server.ip'))
+
     firewall_map_id = Column(
         Integer,
         ForeignKey('firewall_map.id'),
@@ -99,10 +101,11 @@ class IPRange(Base):
     __tablename__ = 'ip_range'
 
     id = Column(Integer, primary_key=True)
-    start_ip = Column(IPAddressType, nullable=False)
-    end_ip = Column(IPAddressType, nullable=False)
+    start_ip = Column(String(255), nullable=False)
+    end_ip = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     dept = Column(String(255), nullable=False)
+
     # As of now, we don't have email addresses included
     # owner_email = Column(String(255), nullable=False)
 
