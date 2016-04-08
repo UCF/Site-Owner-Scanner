@@ -83,8 +83,8 @@ class Scanner(object):
             return reduce(lambda x, y: x << 8 | y, map(int, ip.split('.')))
 
         for record in self.session.query(IPRange).all():
-            min, max = ip2int(record.start_ip), ip2int(record.end_ip)
-            if ip2int(ip) >= min and ip2int(ip) <= max:
+            low, high = ip2int(record.start_ip), ip2int(record.end_ip)
+            if ip2int(ip) >= low and ip2int(ip) <= high:
                 return record.dept
 
     def __failure_hook(self, request, exception):
