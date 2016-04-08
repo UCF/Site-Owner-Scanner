@@ -6,6 +6,7 @@
 **Medium Priority**
 > 1. Standardize DNS IP mappings in spreadsheet
 > 2. Load CSV files as singular task (currently two)
+> 3. Correlate scan instance to a scan result (1..M)
 
 **Low Priority**
 > 1. Add usage scenarios
