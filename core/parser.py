@@ -5,6 +5,8 @@ from models import FirewallMap
 from models import IP
 from models import IPRange
 
+from utils import is_ipv4
+
 import csv
 import re
 import sys
@@ -12,19 +14,15 @@ import sys
 
 class Parser(object):
 
+    """CSV Parser."""
+
     record_types = ('A', 'AAAA')
 
     def __init__(self):
         self.session = None
 
-    @staticmethod
-    def __is_ipv4(record):
-        if not re.match(r'^(\d{1,3}\.){3}\d{1,3}$', record):
-            return False
-        octets = [int(i) for i in re.findall(r'\d', record)]
-        return all(octet >= 0 and octet <= 255 for octet in octets)
-
     def parse_dns_records(self, target, session):
+        """With a session object, extract DNS records from CSV."""
         with open(target, 'rb') as f:
             self.session = session
             external = csv.reader(f, delimiter=',', quoting=csv.QUOTE_MINIMAL)
@@ -34,7 +32,7 @@ class Parser(object):
                 # As of now, we only really need to check for valid IPv4 addresses
                 if record[1] in self.record_types:
                     external_ip = IP(ip_address=' '.join(record[2].split()))
-                    if not self.__is_ipv4(record[3]):
+                    if not is_ipv4(record[3]):
                         internal_ip = IP(ip_address=None)
                     else:
                         internal_ip = IP(
@@ -54,6 +52,7 @@ class Parser(object):
                                           firewall_map, domain, record_type, dns_list])
 
     def parse_domain_info(self, target, session):
+        """With a session object, extract owner records from CSV."""
         with open(target, 'rb') as f:
             self.session = session
             owners = csv.reader(f, delimiter=',', quoting=csv.QUOTE_MINIMAL)

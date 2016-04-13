@@ -1,25 +1,23 @@
-try:
-    from ipaddress import ip_address
-except ImportError:
-    from ipaddr import IPAddress as ip_address
-
 from models import DNSList
 from models import ScanInstance
 from models import ScanResult
+
 from time import strftime
 from urlparse import urlparse
+from utils import ip2int
 
-import re
 import getpass
 import grequests
+import random
+import re
 import settings
 import sys
 import time
-import random
-from functools import reduce
 
 
 class Scanner(object):
+
+    """IP Scanner."""
 
     supported = dict(http=80, https=443)
 
@@ -28,14 +26,17 @@ class Scanner(object):
 
     @staticmethod
     def __add_host(host):
-        return host if re.match(
-            r'^(ucf\.edu|.*ucf\.edu)', host) else '{host}.ucf.edu'.format(host=host)
+        """Return a UCF host. If it starts with or contains 'ucf.edu', return as is."""
+        regexp = r'^(ucf\.edu|.*ucf\.edu)'
+        return host if re.match(regexp, host) else '{host}.ucf.edu'.format(host=host)
 
     @staticmethod
     def __add_port(protocol):
+        """Return a port based on the protocol."""
         return Scanner.supported.get(protocol, 80)
 
     def __url_factory(self):
+        """Closure factory to generate URLs (HTTP, HTTPS)."""
         def by_protocol(protocol, session):
             if protocol not in self.supported:
                 print >> sys.stderr, 'ERROR: \'{protocol}\' is not supported.'.format(
@@ -56,6 +57,7 @@ class Scanner(object):
         return by_protocol
 
     def __success_hook(self, response, **kwargs):
+        """Callback that occurs on response during an asynchronous request."""
         url = urlparse(response.url)
         port = url.port
         protocol = url.scheme
@@ -79,15 +81,14 @@ class Scanner(object):
             domain=domain, port=port, ipaddr=ipaddr)
 
     def __find_owner(self, ip):
-        def ip2int(ip):
-            return reduce(lambda x, y: x << 8 | y, map(int, ip.split('.')))
-
+        """Determines site owner by comparing IP addresses as int values."""
         for record in self.session.query(IPRange).all():
             low, high = ip2int(record.start_ip), ip2int(record.end_ip)
             if ip2int(ip) >= low and ip2int(ip) <= high:
                 return record.dept
 
     def __failure_hook(self, request, exception):
+        """Callback when an exception occurs in an asynchronous request."""
         url = urlparse(request.url)
         port = url.port
         protocol = url.scheme
@@ -112,6 +113,7 @@ class Scanner(object):
             domain=domain, port=port, ipaddr=ipaddr, owner=owner)
 
     def scan(self, session):
+        """Main scan entry point."""
         start_time = strftime('%Y-%m-%d %H:%M:%S')
         self.session = session
         author = getpass.getuser()

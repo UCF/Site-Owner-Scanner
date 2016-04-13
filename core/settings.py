@@ -1,13 +1,13 @@
 import sys
 
-# Program version number
-VERSION = '0.1'
-# Default request timeout
+# Program version (e.g., smap v1.0)
+VERSION = '1.0'
+# request timeout (seconds)
 TIMEOUT = 10
 # Amount of requests to make at a time
 CONCURRENT_REQUESTS = 20
 
-# Byte constraint to limit unexpected *.csv file sizes
+# Byte constraint to limit unexpected CSV file sizes
 MAX_BYTES = 200000
 
 # Browser agents to use in requests
