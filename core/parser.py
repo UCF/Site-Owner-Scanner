@@ -41,9 +41,11 @@ class Parser(object):
                     firewall_map = FirewallMap(
                         internal_ip=internal_ip,
                         external_ip=external_ip)
+
                     domain = Domain(name=' '.join(record[0].split()))
                     record_type = DNSRecordType(
                         name=' '.join(record[1].split()))
+
                     dns_list = DNSList(
                         domain=domain,
                         record_type=record_type,

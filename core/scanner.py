@@ -1,4 +1,6 @@
+from models import Domain
 from models import DNSList
+from models import IP
 from models import ScanInstance
 from models import ScanResult
 
@@ -13,6 +15,7 @@ import re
 import settings
 import sys
 import time
+import sqlalchemy
 
 
 class Scanner(object):
@@ -28,12 +31,13 @@ class Scanner(object):
     def __add_host(host):
         """Return a UCF host. If it starts with or contains 'ucf.edu', return as is."""
         regexp = r'^(ucf\.edu|.*ucf\.edu)'
-        return host if re.match(regexp, host) else '{host}.ucf.edu'.format(host=host)
+        return host if re.match(
+            regexp, host) else '{host}.ucf.edu'.format(host=host)
 
     @staticmethod
     def __add_port(protocol):
         """Return a port based on the protocol."""
-        return Scanner.supported.get(protocol, 80)
+        return Scanner.supported.get(protocol)
 
     def __url_factory(self):
         """Closure factory to generate URLs (HTTP, HTTPS)."""
@@ -62,23 +66,24 @@ class Scanner(object):
         port = url.port
         protocol = url.scheme
         response_code = response.status_code
-        message = None
 
-        domain = response.request.headers['Host']
+        domain_name = response.request.headers['Host']
         ipaddr = re.search(r'(\d{1,3}\.){3}\d{1,3}', response.url).group(0)
 
         ip = IP(ip_address=ipaddr)
+        domain = Domain(name=domain_name)
+
         scan_result = ScanResult(
             port=port,
             protocol=protocol,
             response_code=response_code,
-            message=message,
+            message=None,
             ip=ip,
             domain=domain)
-        self.session.add(scan_result)
 
-        print '{domain} is alive on port {port} with IP {ipaddr}'.format(
-            domain=domain, port=port, ipaddr=ipaddr)
+        self.session.add(scan_result)
+        print ' |- {domain} is alive on port {port} with IP {ipaddr}'.format(
+            domain=domain.name, port=port, ipaddr=ipaddr)
 
     def __find_owner(self, ip):
         """Determines site owner by comparing IP addresses as int values."""
@@ -95,10 +100,12 @@ class Scanner(object):
         response_code = None
         message = request.exception.message
 
-        domain = request.headers['Host']
+        domain_name = request.headers['Host']
         ipaddr = re.search(r'(\d{1,3}\.){3}\d{1,3}', request.url).group(0)
 
         ip = IP(ip_address=ipaddr)
+        domain = Domain(name=domain_name)
+
         scan_result = ScanResult(
             port=port,
             protocol=protocol,
@@ -106,10 +113,11 @@ class Scanner(object):
             message=message,
             ip=ip,
             domain=domain)
+
         self.session.add(scan_result)
 
         owner = self.__find_owner(ipaddr)
-        print '{domain} is unreachable on port {port} with {ipaddr}, please contact: '.format(
+        print ' |- {domain} is unreachable on port {port} with {ipaddr}, contact: '.format(
             domain=domain, port=port, ipaddr=ipaddr, owner=owner)
 
     def scan(self, session):
@@ -139,3 +147,5 @@ class Scanner(object):
             start_time=start_time,
             end_time=end_time,
             author=author)
+
+        self.session.add(scan_instance)

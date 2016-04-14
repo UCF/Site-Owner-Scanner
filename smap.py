@@ -38,7 +38,7 @@ def welcome():
    |\_________\|__|     \|__|\|__|\|__|\|__|
    \|_________|
 
----- [ version {0}  D.Ford <Demetrius.Ford@ucf.edu ] ----
+---- [ version {0} D.Ford <Demetrius.Ford@ucf.edu> ] ----
 
     """.format(settings.VERSION)
 
@@ -51,7 +51,8 @@ def session_scope():
         yield session
         session.commit()
     except SQLAlchemyError as error:
-        print >> sys.stderr, 'ERROR: {0}'.format(str(error))
+        msg = str(error)
+        click.echo('ERROR: {0}'.format(msg), file=sys.stderr)
         session.rollback()
         sys.exit(1)
     finally:
@@ -93,14 +94,16 @@ def scan():
 def setupdb():
     """Create database tables if needed."""
     if not database_exists(Engine.url):
-        print >> sys.stderr, 'ERROR: database does not exist.'
+        click.echo('ERROR: database does not exist.')
         sys.exit(1)
+
     inspector = reflection.Inspector.from_engine(Engine)
     if not any(inspector.get_table_names()):
         Base.metadata.create_all(Engine, checkfirst=True)
-        print '[+] created database tables.'
+        click.echo('[+] created database tables.')
         return
-    print 'skipped. Table(s) already exist.'
+    
+    click.echo('WARNING: skipped. Table(s) already exist.')
 
 
 @smap.command('insert-dns-records')
