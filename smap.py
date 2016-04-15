@@ -92,7 +92,7 @@ def scan():
 
 @smap.command()
 def setupdb():
-    """Create database tables if needed."""
+    """Create smap database tables if needed."""
     if not database_exists(Engine.url):
         click.echo('ERROR: database does not exist.')
         sys.exit(1)

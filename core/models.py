@@ -84,7 +84,7 @@ class DNSRecordType(Base):
     __tablename__ = 'dns_record'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(255), nullable=False)
+    name = Column(String(10), nullable=False)
 
 
 class DNSServer(Base):
@@ -101,13 +101,13 @@ class IPRange(Base):
     __tablename__ = 'ip_range'
 
     id = Column(Integer, primary_key=True)
-    start_ip = Column(String(255), nullable=False)
-    end_ip = Column(String(255), nullable=False)
+    start_ip = Column(String(45), nullable=False)
+    end_ip = Column(String(45), nullable=False)
     description = Column(Text, nullable=True)
-    dept = Column(String(255), nullable=False)
+    dept = Column(String(75), nullable=False)
 
     # As of now, we don't have email addresses included
-    # owner_email = Column(String(255), nullable=False)
+    # owner_email = Column(String(254), nullable=False)
 
 
 class ScanResult(Base):
@@ -137,4 +137,4 @@ class ScanInstance(Base):
     id = Column(Integer, primary_key=True)
     start_time = Column(DateTime, nullable=False)
     end_time = Column(DateTime, nullable=True)
-    author = Column(String(255), nullable=False)
+    author = Column(String(50), nullable=False)

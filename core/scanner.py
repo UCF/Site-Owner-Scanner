@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from models import Domain
 from models import DNSList
 from models import IP
@@ -7,6 +9,7 @@ from models import ScanResult
 from time import strftime
 from urlparse import urlparse
 from utils import ip2int
+from utils import is_ipv4
 
 import getpass
 import grequests
@@ -29,10 +32,9 @@ class Scanner(object):
 
     @staticmethod
     def __add_host(host):
-        """Return a UCF host. If it starts with or contains 'ucf.edu', return as is."""
+        """Append a domain with 'ucf.edu'."""
         regexp = r'^(ucf\.edu|.*ucf\.edu)'
-        return host if re.match(
-            regexp, host) else '{host}.ucf.edu'.format(host=host)
+        return host if re.match(regexp, host) else '{0}.ucf.edu'.format(host)
 
     @staticmethod
     def __add_port(protocol):
@@ -43,8 +45,9 @@ class Scanner(object):
         """Closure factory to generate URLs (HTTP, HTTPS)."""
         def by_protocol(protocol, session):
             if protocol not in self.supported:
-                print >> sys.stderr, 'ERROR: \'{protocol}\' is not supported.'.format(
-                    protocol=protocol)
+                print(
+                    'ERROR: \'{0}\' is not supported.'.format(protocol),
+                    file=sys.stderr)
                 sys.exit(1)
             mappings = []
             for record in session.query(DNSList).all():
@@ -82,15 +85,19 @@ class Scanner(object):
             domain=domain)
 
         self.session.add(scan_result)
-        print ' |- {domain} is alive on port {port} with IP {ipaddr}'.format(
-            domain=domain.name, port=port, ipaddr=ipaddr)
+        print(' |- <{0}> {1} is alive on port {2} with IP {3}'.format(
+            response_code, domain.name, port, ipaddr))
 
     def __find_owner(self, ip):
-        """Determines site owner by comparing IP addresses as int values."""
+        """Determines site owner by comparing IP addresses as integers."""
         for record in self.session.query(IPRange).all():
-            low, high = ip2int(record.start_ip), ip2int(record.end_ip)
-            if ip2int(ip) >= low and ip2int(ip) <= high:
-                return record.dept
+            if not is_ipv4(record.start_ip) or not is_ipv4(record.end_ip):
+                print('ERROR: invalid IP address.', file=sys.stderr)
+                sys.exit(1)
+
+                low, high = ip2int(record.start_ip), ip2int(record.end_ip)
+                if ip2int(ip) >= low and ip2int(ip) <= high:
+                    return record.dept
 
     def __failure_hook(self, request, exception):
         """Callback when an exception occurs in an asynchronous request."""
@@ -117,8 +124,8 @@ class Scanner(object):
         self.session.add(scan_result)
 
         owner = self.__find_owner(ipaddr)
-        print ' |- {domain} is unreachable on port {port} with {ipaddr}, contact: '.format(
-            domain=domain, port=port, ipaddr=ipaddr, owner=owner)
+        print(' |- {0} is unreachable on port {1} with {2}, contact: {3}'.format(
+            domain, port, ipaddr, owner))
 
     def scan(self, session):
         """Main scan entry point."""

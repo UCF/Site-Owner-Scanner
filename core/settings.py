@@ -1,16 +1,18 @@
+from __future__ import print_function
+
 import sys
 
 # Program version (e.g., smap v1.0)
 VERSION = '1.0'
-# request timeout (seconds)
+# Request timeout (seconds)
 TIMEOUT = 10
-# Amount of requests to make at a time
+# Number of requests to make at a time
 CONCURRENT_REQUESTS = 20
 
 # Byte constraint to limit unexpected CSV file sizes
-MAX_BYTES = 200000
+MAX_BYTES = 300000
 
-# Browser agents to use in requests
+# User agents to use in requests
 USER_AGENTS = (
     'Mozilla/5.0 (X11; Linux x86_64; rv:44.0) Gecko/20100101 Firefox/44.0',
     'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.71 Safari/537.36',
@@ -26,6 +28,5 @@ USER_AGENTS = (
 try:
     from settings_local import *
 except ImportError:
-    print >> sys.stderr, 'ERROR: local settings file was not found. ' \
-        'Ensure settings_local.py exists in smap root.'
+    print('ERROR: local settings not found. Was settings_local.py created?', file=sys.stderr)
     sys.exit(1)
