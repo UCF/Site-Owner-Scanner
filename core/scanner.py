@@ -3,6 +3,7 @@ from __future__ import print_function
 from models import Domain
 from models import DNSList
 from models import IP
+from models import IPRange
 from models import ScanInstance
 from models import ScanResult
 
@@ -114,29 +115,29 @@ class Scanner(object):
         response_code = None
         message = request.exception.message
 
-        # domain_name = request.headers['Host']
+        domain_name = exception.request.headers['Host']
         ipaddr = re.search(r'(\d{1,3}\.){3}\d{1,3}', request.url).group(0)
 
         ip = IP(ip_address=ipaddr)
-        # domain = Domain(name=domain_name)
+        domain = Domain(name=domain_name)
 
-        # scan_result = ScanResult(
-        #     port=port,
-        #     protocol=protocol,
-        #     response_code=response_code,
-        #     message=message,
-        #     ip=ip,
-        #     domain=domain)
+        scan_result = ScanResult(
+            port=port,
+            protocol=protocol,
+            response_code=response_code,
+            message=message,
+            ip=ip,
+            domain=domain)
 
-        # self.session.add(scan_result)
+        self.session.add(scan_result)
 
-        # owner = self.__find_owner(ipaddr)
-        # print(' |- {0} is unreachable on port {1} with {2}, contact: {3}'.format(
-        #     domain, port, ipaddr, owner))
+        owner = self.__find_owner(ipaddr)
+        print(' |- {0} is unreachable on port {1} with {2}, contact: {3}'.format(
+            domain.name, port, ipaddr, owner))
 
     def scan(self, session):
         """Main scan entry point."""
-        start_time = time.strftime('%Y-%m-%d %H:%M:%S')
+        time_started = time.strftime('%Y-%m-%d %H:%M:%S')
         self.session = session
         author = getpass.getuser()
         http, https = self.supported.keys()[0], self.supported.keys()[1]
@@ -151,15 +152,16 @@ class Scanner(object):
                     'User-Agent': random.choice(settings.USER_AGENTS), 'Host': host},
                 hooks=dict(response=self.__success_hook),
                 timeout=settings.TIMEOUT) for host, url in urls]
+
         grequests.map(
             requests=async_requests,
             size=settings.CONCURRENT_REQUESTS,
             exception_handler=self.__failure_hook)
 
-        end_time = time.strftime('%Y-%m-%d %H:%M:%S')
+        time_ended = time.strftime('%Y-%m-%d %H:%M:%S')
         scan_instance = ScanInstance(
-            start_time=start_time,
-            end_time=end_time,
+            start_time=time_started,
+            end_time=time_ended,
             author=author)
 
         self.session.add(scan_instance)

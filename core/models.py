@@ -104,7 +104,7 @@ class IPRange(Base):
     start_ip = Column(String(45), nullable=False)
     end_ip = Column(String(45), nullable=False)
     description = Column(Text, nullable=True)
-    dept = Column(String(75), nullable=False)
+    dept = Column(String(150), nullable=False)
 
     # As of now, we don't have email addresses included
     # owner_email = Column(String(254), nullable=False)
