@@ -20,13 +20,14 @@ import mimetypes
 import os
 import sqlalchemy
 import sys
+import tempfile
 
 Engine = sqlalchemy.create_engine(
     URL(**settings.DATABASE), echo=settings.DEBUG)
 Session = sessionmaker(bind=Engine)
 
 
-def welcome():
+def banner():
     print r"""
 
  ________  _____ ______   ________  ________
@@ -59,7 +60,7 @@ def session_scope():
         session.close()
 
 
-def is_csv(ctx, param, value):
+def inspect_csv(ctx, param, value):
     """Inspect CSV file to ensure it follows strict requirements."""
     mimetype = mimetypes.guess_type(value, strict=True)[0]
     extension = mimetypes.guess_extension(mimetype, strict=True)
@@ -84,7 +85,7 @@ def smap():
 @smap.command()
 def scan():
     """Start IP scanner."""
-    welcome()
+    banner()
     click.echo('[*] starting scan ...')
     with session_scope() as session:
         Scanner().scan(session)
@@ -94,7 +95,7 @@ def scan():
 def setupdb():
     """Create smap database tables if needed."""
     if not database_exists(Engine.url):
-        click.echo('ERROR: database does not exist.')
+        click.echo('ERROR: database does not exist.', file=sys.stderr)
         sys.exit(1)
 
     inspector = reflection.Inspector.from_engine(Engine)
@@ -102,12 +103,12 @@ def setupdb():
         Base.metadata.create_all(Engine, checkfirst=True)
         click.echo('[+] created database tables.')
         return
-    
+
     click.echo('WARNING: skipped. Table(s) already exist.')
 
 
 @smap.command('insert-dns-records')
-@click.option('--target', type=click.Path(exists=True), callback=is_csv)
+@click.option('--target', type=click.Path(exists=True), callback=inspect_csv)
 def insert_dns_records(target):
     """Insert DNS records to database."""
     with session_scope() as session:
@@ -115,7 +116,7 @@ def insert_dns_records(target):
 
 
 @smap.command('insert-domain-info')
-@click.option('--target', type=click.Path(exists=True), callback=is_csv)
+@click.option('--target', type=click.Path(exists=True), callback=inspect_csv)
 def insert_domain_info(target):
     """Insert IPMan records to database."""
     with session_scope() as session:

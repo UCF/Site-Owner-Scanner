@@ -49,7 +49,7 @@ class DNSList(Base):
         ForeignKey('dns_record.id'),
         nullable=False)
 
-    # Not included in spreadsheet, but we'll need this at some point
+    # Not included in CSV, but at some point we'll probably need this
     # dns_server = Column(IPAddressType, ForeignKey('dns_server.ip'))
 
     firewall_map_id = Column(

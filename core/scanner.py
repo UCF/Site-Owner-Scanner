@@ -6,10 +6,10 @@ from models import IP
 from models import ScanInstance
 from models import ScanResult
 
-from time import strftime
 from urlparse import urlparse
-from utils import ip2int
-from utils import is_ipv4
+
+from utilities import ip2int
+from utilities import is_ipv4
 
 import getpass
 import grequests
@@ -31,40 +31,41 @@ class Scanner(object):
         self.session = None
 
     @staticmethod
-    def __add_host(host):
-        """Append a domain with 'ucf.edu'."""
-        regexp = r'^(ucf\.edu|.*ucf\.edu)'
-        return host if re.match(regexp, host) else '{0}.ucf.edu'.format(host)
+    def _add_host(host):
+        """Append a domain with '.ucf.edu'."""
+        ucf_domain = r'^(ucf\.edu|.*ucf\.edu)'
+        return host if re.match(ucf_domain, host) != None else '{0}.ucf.edu'.format(host)
 
     @staticmethod
-    def __add_port(protocol):
-        """Return a port based on the protocol."""
+    def _add_port(protocol):
+        """Append a port based on protocol."""
         return Scanner.supported.get(protocol)
 
     def __url_factory(self):
-        """Closure factory to generate URLs (HTTP, HTTPS)."""
+        """Create a set of URLs to process."""
         def by_protocol(protocol, session):
             if protocol not in self.supported:
                 print(
                     'ERROR: \'{0}\' is not supported.'.format(protocol),
                     file=sys.stderr)
                 sys.exit(1)
+
             mappings = []
             for record in session.query(DNSList).all():
                 domain_name = record.domain.name
                 external_ip = record.firewall_map.external_ip.ip_address
                 mappings.append(
                     ('{host}'.format(
-                        host=self.__add_host(domain_name)),
+                        host=self._add_host(domain_name)),
                         '{protocol}://{ipaddr}:{port}'.format(
                         protocol=protocol,
                         ipaddr=str(external_ip),
-                        port=self.__add_port(protocol))))
+                        port=self._add_port(protocol))))
             return mappings
         return by_protocol
 
     def __success_hook(self, response, **kwargs):
-        """Callback that occurs on response during an asynchronous request."""
+        """Handles received response objects (e.g., 200)."""
         url = urlparse(response.url)
         port = url.port
         protocol = url.scheme
@@ -89,47 +90,53 @@ class Scanner(object):
             response_code, domain.name, port, ipaddr))
 
     def __find_owner(self, ip):
-        """Determines site owner by comparing IP addresses as integers."""
+        """Find a site owner by comparing IP addresses as integers."""
         for record in self.session.query(IPRange).all():
-            if not is_ipv4(record.start_ip) or not is_ipv4(record.end_ip):
-                print('ERROR: invalid IP address.', file=sys.stderr)
-                sys.exit(1)
+            head, tail = record.start_ip, record.end_ip
 
-                low, high = ip2int(record.start_ip), ip2int(record.end_ip)
+            if is_ipv4(head) and is_ipv4(tail):
+                low, high = ip2int(head), ip2int(tail)
                 if ip2int(ip) >= low and ip2int(ip) <= high:
                     return record.dept
+            else:
+                print(
+                    'ERROR: invalid IP address(es) - {0}.',
+                    (record.start_ip,
+                     record.end_ip),
+                    file=sys.stderr)
+                sys.exit(1)
 
     def __failure_hook(self, request, exception):
-        """Callback when an exception occurs in an asynchronous request."""
+        """Handles failed request objects (e.g., errors)."""
         url = urlparse(request.url)
         port = url.port
         protocol = url.scheme
         response_code = None
         message = request.exception.message
 
-        domain_name = request.headers['Host']
+        # domain_name = request.headers['Host']
         ipaddr = re.search(r'(\d{1,3}\.){3}\d{1,3}', request.url).group(0)
 
         ip = IP(ip_address=ipaddr)
-        domain = Domain(name=domain_name)
+        # domain = Domain(name=domain_name)
 
-        scan_result = ScanResult(
-            port=port,
-            protocol=protocol,
-            response_code=response_code,
-            message=message,
-            ip=ip,
-            domain=domain)
+        # scan_result = ScanResult(
+        #     port=port,
+        #     protocol=protocol,
+        #     response_code=response_code,
+        #     message=message,
+        #     ip=ip,
+        #     domain=domain)
 
-        self.session.add(scan_result)
+        # self.session.add(scan_result)
 
-        owner = self.__find_owner(ipaddr)
-        print(' |- {0} is unreachable on port {1} with {2}, contact: {3}'.format(
-            domain, port, ipaddr, owner))
+        # owner = self.__find_owner(ipaddr)
+        # print(' |- {0} is unreachable on port {1} with {2}, contact: {3}'.format(
+        #     domain, port, ipaddr, owner))
 
     def scan(self, session):
         """Main scan entry point."""
-        start_time = strftime('%Y-%m-%d %H:%M:%S')
+        start_time = time.strftime('%Y-%m-%d %H:%M:%S')
         self.session = session
         author = getpass.getuser()
         http, https = self.supported.keys()[0], self.supported.keys()[1]
@@ -149,7 +156,7 @@ class Scanner(object):
             size=settings.CONCURRENT_REQUESTS,
             exception_handler=self.__failure_hook)
 
-        end_time = strftime('%Y-%m-%d %H:%M:%S')
+        end_time = time.strftime('%Y-%m-%d %H:%M:%S')
         scan_instance = ScanInstance(
             start_time=start_time,
             end_time=end_time,

@@ -5,7 +5,7 @@ from models import FirewallMap
 from models import IP
 from models import IPRange
 
-from utils import is_ipv4
+from utilities import is_ipv4
 
 import csv
 import re
