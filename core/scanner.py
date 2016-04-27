@@ -35,7 +35,8 @@ class Scanner(object):
     def _add_host(host):
         """Append a domain with '.ucf.edu'."""
         ucf_domain = r'^(ucf\.edu|.*ucf\.edu)'
-        return host if re.match(ucf_domain, host) != None else '{0}.ucf.edu'.format(host)
+        return host if re.match(
+            ucf_domain, host) != None else '{0}.ucf.edu'.format(host)
 
     @staticmethod
     def _add_port(protocol):
@@ -106,9 +107,10 @@ class Scanner(object):
                      record.end_ip),
                     file=sys.stderr)
                 sys.exit(1)
+        return 'Owner not found ...'
 
     def __failure_hook(self, request, exception):
-        """Handles failed request objects (e.g., errors)."""
+        """Handles failed requests (e.g., TimeoutError, TooManyRedirects, etc)."""
         url = urlparse(request.url)
         port = url.port
         protocol = url.scheme

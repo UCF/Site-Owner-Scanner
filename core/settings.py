@@ -28,5 +28,7 @@ USER_AGENTS = (
 try:
     from settings_local import *
 except ImportError:
-    print('ERROR: local settings not found. Was settings_local.py created?', file=sys.stderr)
+    print(
+        'ERROR: local settings not found. Was settings_local.py created?',
+        file=sys.stderr)
     sys.exit(1)
