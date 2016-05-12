@@ -5,9 +5,12 @@ from contextlib import contextmanager
 
 from core import settings
 from core.models import Base
+from core.models import DNSList
+from core.models import IPRange
 from core.parser import Parser
 from core.scanner import Scanner
 
+from sqlalchemy.sql import exists
 from sqlalchemy.engine import reflection
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
@@ -20,7 +23,6 @@ import mimetypes
 import os
 import sqlalchemy
 import sys
-import tempfile
 
 Engine = sqlalchemy.create_engine(
     URL(**settings.DATABASE), echo=settings.DEBUG)
@@ -52,8 +54,8 @@ def session_scope():
         yield session
         session.commit()
     except SQLAlchemyError as error:
-        msg = str(error)
-        click.echo('ERROR: {0}'.format(msg), file=sys.stderr)
+        message = str(error)
+        click.echo('ERROR: {0}'.format(message), file=sys.stderr)
         session.rollback()
         sys.exit(1)
     finally:
@@ -85,10 +87,27 @@ def smap():
 @smap.command()
 def scan():
     """Start IP scanner."""
-    banner()
-    click.echo('[*] starting scan ...')
-    with session_scope() as session:
-        Scanner().scan(session)
+    if not database_exists(Engine.url):
+        click.echo('ERROR: database does not exist.', file=sys.stderr)
+        sys.exit(1)
+
+    inspector = reflection.Inspector.from_engine(Engine)
+    if inspector.get_table_names():
+        with session_scope() as session:
+            q1 = session.query(DNSList)
+            q2 = session.query(IPRange)
+            if not(session.query(q1.exists()).scalar()
+                   and session.query(q2.exists()).scalar()):
+                click.echo(
+                    'ERROR: missing Domain Ranges and DNS records!',
+                    file=sys.stderr)
+                return
+            banner()
+            click.echo('[*] starting scan ...')
+            Scanner().scan(session)
+    else:
+        click.echo('ERROR: no table(s) were found.', file=sys.stderr)
+        sys.exit(1)
 
 
 @smap.command()
@@ -99,7 +118,7 @@ def setupdb():
         sys.exit(1)
 
     inspector = reflection.Inspector.from_engine(Engine)
-    if not any(inspector.get_table_names()):
+    if not inspector.get_table_names():
         Base.metadata.create_all(Engine, checkfirst=True)
         click.echo('[+] created database tables.')
         return
