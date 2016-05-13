@@ -16,13 +16,39 @@ Commands:
   setupdb             Create database tables if needed.
 ```
 
+## Install:
+
+1. Install Virtualenv for Python2
+  ```shell
+  $ [sudo] pip install virtualenv
+  ```
+
+2. Create a virtual environment
+  ```shell
+  $ scl enable python27 bash
+  $ virtualenv Site-Owner-Scanner
+  $ cd "$_" || exit 1
+  ```
+
+3. Clone repo to a subdirectory
+  ```shell
+  $ git clone https://github.com/UCF/Site-Owner-Scanner.git src
+  $ source bin/activate
+  ```
+
+4. Install dependencies via pip
+  ```shell
+  $ cd src || exit 1
+  $ pip install -r requirements.txt
+  ```
+
 ## Kudos:
 * Jim Barnes
 
 ## License
 > MIT License
 >
-> Copyright (c) 2016, Demetrius Ford < Demetrius.Ford@ucf.edu >
+> Copyright (c) 2016, Demetrius Ford &lt;Demetrius.Ford@ucf.edu&gt;
 
 > Permission is hereby granted, free of charge, to any person obtaining a copy
 > of this software and associated documentation files (the "Software"), to deal
