@@ -1,7 +1,6 @@
 **High Priority**
-> 1. Add to Jenkins
-> 2. Deploy
-> 3. Unit tests (Nose)
+> 1. Improve domain owner comparison speed
+> 2. Export scan result data to xls spreadsheet
 
 **Medium Priority**
 > 1. Standardize DNS IP mappings in spreadsheet
@@ -21,7 +20,7 @@
 
 from __future__ import print_function
 
-import csvvalidator import CSVValidator
+from csvvalidator import CSVValidator
 
 
 class DNSValidator(CSVValidator):
@@ -36,7 +35,6 @@ class DNSValidator(CSVValidator):
         super(DNSValidator, self).__init__(field_names)
 
     def validate(self):
-        # Do some work ...
         pass
 
 class IPRangeValidator(CSVValidator)
@@ -55,7 +53,6 @@ class IPRangeValidator(CSVValidator)
         super(IPRangeValidator, self).__init__(field_names)
 
     def validate(self):
-        # Do some work ...
         pass
 
 class ValidatorFactory(object):
