@@ -106,7 +106,6 @@ def scan():
 
         if not(session.query(q1.exists()).scalar()
                and session.query(q2.exists()).scalar()):
-            print 'HEY LOOK HERE'
             display_failure(
                 'scan requires records in both `dns_list` and `ip_range`.')
             sys.exit(1)
