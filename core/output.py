@@ -10,9 +10,9 @@ def display_info(message, prefix='[*] '):
 
 def display_results(message, contains_errors=False):
     if contains_errors is True:
-        click.echo(click.style('✖ ', fg='red') + message)
+        click.echo(click.style(' ✖ ', fg='red') + message)
         return
-    click.echo(click.style('✔ ', fg='green') + message)
+    click.echo(click.style(' ✔ ', fg='green') + message)
 
 
 def display_warning(message, separator=': ', label='WARNING'):

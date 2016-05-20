@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from models import Domain
 from models import DNSList
 from models import IP
@@ -74,7 +72,7 @@ class Scanner(object):
             port=url.port,
             protocol=url.scheme,
             response_code=response.status_code,
-            owner='',
+            owner='todo',
             message=None,
             ip=ip,
             domain=domain)
@@ -82,11 +80,11 @@ class Scanner(object):
         self.session.add(scan_result)
 
         display_results(
-            ' |- domain: {domain} ip: {ip} port: {port} owner: {owner}'.format(
+            'Domain: {domain} IP Address: {ip} Port: {port} Owner: {owner}.'.format(
                 domain=domain.name,
                 ip=ip_address,
                 port=url.port,
-                owner=owner))
+                owner='todo'))
 
     def failure_hook(self, request, exception):
         url = urlparse(request.url)
@@ -100,7 +98,7 @@ class Scanner(object):
             port=url.port,
             protocol=url.scheme,
             response_code=None,
-            owner='',
+            owner='todo',
             message=request.exception.message,
             ip=ip,
             domain=domain)
@@ -108,11 +106,11 @@ class Scanner(object):
         self.session.add(scan_result)
 
         display_results(
-            ' |- domain: {domain} ip: {ip} port: {port} owner: {owner}'.format(
+            'Domain: {domain} IP Address: {ip} Port: {port} Owner: {owner}.'.format(
                 domain=domain.name,
                 ip=ip_address,
                 port=url.port,
-                owner=owner),
+                owner='todo'),
             contains_errors=True)
 
     def scan(self, session):
