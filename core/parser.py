@@ -23,13 +23,12 @@ class Parser(object):
 
     def parse_dns_records(self, target, session):
         """Extract DNS records from a CSV."""
-        with open(target, 'rb') as f:
+        with open(target, 'rb') as records:
             self.session = session
-            external = csv.reader(f, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+            external = csv.reader(
+                records, delimiter=',', quoting=csv.QUOTE_MINIMAL)
             external.next()
             for record in external:
-                # Filter DNS record types by IPv4 or IPv6 address spaces (A, AAAA)
-                # As of now, we only really need to check for valid IPv4 addresses
                 if record[1] in self.record_types:
                     external_ip = IP(ip_address=' '.join(record[2].split()))
                     if not is_ipv4(record[3]):
@@ -51,22 +50,29 @@ class Parser(object):
                         record_type=record_type,
                         firewall_map=firewall_map)
 
-                    self.session.add_all([external_ip, internal_ip,
-                                          firewall_map, domain, record_type, dns_list])
+                    self.session.add_all(
+                        [external_ip,
+                         internal_ip,
+                         firewall_map,
+                         domain,
+                         record_type,
+                         dns_list])
 
     def parse_domain_info(self, target, session):
         """Extract owner records from a CSV."""
-        with open(target, 'rb') as f:
+        with open(target, 'rb') as records:
             self.session = session
-            owners = csv.reader(f, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+            owners = csv.reader(
+                records,
+                delimiter=',',
+                quoting=csv.QUOTE_MINIMAL)
             owners.next()
             for record in owners:
-                if not re.match(r'^All Off Campus Addresses',
-                                record[4], re.IGNORECASE):
+                if record[4] != 'All Off Campus Addresses':
                     ip_range = IPRange(
                         start_ip=' '.join(record[2].split()),
                         end_ip=' '.join(record[3].split()),
                         description=' '.join(record[4].split()),
-                        dept=' '.join(record[5].split()))
+                        department=' '.join(record[5].split()))
 
                     self.session.add(ip_range)

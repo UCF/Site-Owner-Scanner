@@ -1,11 +1,13 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy_utils import IPAddressType
+
 from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Text
+
 from sqlalchemy.orm import relationship
 
 Base = declarative_base()
@@ -26,6 +28,8 @@ class FirewallMap(Base):
     id = Column(Integer, primary_key=True)
     internal_ip_id = Column(Integer, ForeignKey('ip.id'), nullable=False)
     external_ip_id = Column(Integer, ForeignKey('ip.id'), nullable=False)
+
+    #### RELATIONSHIPS ####
 
     internal_ip = relationship(
         'IP',
@@ -49,13 +53,12 @@ class DNSList(Base):
         ForeignKey('dns_record.id'),
         nullable=False)
 
-    # Not included in CSV, but at some point we'll probably need this
-    # dns_server = Column(IPAddressType, ForeignKey('dns_server.ip'))
-
     firewall_map_id = Column(
         Integer,
         ForeignKey('firewall_map.id'),
         nullable=False)
+
+    ########## RELATIONSHIPS ##########
 
     domain = relationship(
         'Domain',
@@ -104,10 +107,7 @@ class IPRange(Base):
     start_ip = Column(String(45), nullable=False)
     end_ip = Column(String(45), nullable=False)
     description = Column(Text, nullable=True)
-    dept = Column(String(150), nullable=False)
-
-    # As of now, we don't have email addresses included
-    # owner_email = Column(String(254), nullable=False)
+    department = Column(String(150), nullable=False)
 
 
 class ScanResult(Base):
@@ -118,10 +118,14 @@ class ScanResult(Base):
     port = Column(Integer, nullable=False)
     protocol = Column(String(10), nullable=False)
     response_code = Column(Integer, nullable=True)
+
+    owner = Column(String(150), nullable=False)
     message = Column(Text, nullable=True)
 
     ip_id = Column(Integer, ForeignKey('ip.id'), nullable=False)
     domain_id = Column(Integer, ForeignKey('domain.id'), nullable=False)
+
+    ########## RELATIONSHIPS ##########
 
     ip = relationship('IP', foreign_keys=[ip_id], backref='scan_results')
     domain = relationship(
