@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from models import Domain
 from models import DNSList
 from models import IP
@@ -7,14 +5,17 @@ from models import IPRange
 from models import ScanInstance
 from models import ScanResult
 
+from cli.output import display_failure
+from cli.output import display_results
+
+from reporting.xlsx import export_xlsx
 from urlparse import urlparse
 
-from utilities import ip2int
-from utilities import is_ipv4
+from util import is_ipv4
+from util import ip2_int
 
 import getpass
 import grequests
-import random
 import re
 import settings
 import sys
@@ -24,8 +25,6 @@ import sqlalchemy
 
 class Scanner(object):
 
-    """IP Scanner."""
-
     supported = dict(http=80, https=443)
 
     def __init__(self):
@@ -33,23 +32,20 @@ class Scanner(object):
 
     @staticmethod
     def _add_host(host):
-        """Append a domain with '.ucf.edu'."""
-        ucf_domain = r'^(ucf\.edu|.*ucf\.edu)'
-        return host if re.match(
-            ucf_domain, host) != None else '{0}.ucf.edu'.format(host)
+        ucf_host = r'^(ucf\.edu|.*ucf\.edu)$'
+        if re.match(ucf_host, host) != None:
+            return host
+        return '{0}.ucf.edu'.format(host)
 
     @staticmethod
     def _add_port(protocol):
-        """Append a port based on protocol."""
         return Scanner.supported.get(protocol)
 
-    def __url_factory(self):
-        """Create a set of URLs to process."""
+    def url_factory(self):
         def by_protocol(protocol, session):
             if protocol not in self.supported:
-                print(
-                    'ERROR: \'{0}\' is not supported.'.format(protocol),
-                    file=sys.stderr)
+                display_failure(
+                    "'{0}' is not supported.".format(protocol))
                 sys.exit(1)
 
             mappings = []
@@ -66,99 +62,94 @@ class Scanner(object):
             return mappings
         return by_protocol
 
-    def __success_hook(self, response, **kwargs):
-        """Handles received response objects (e.g., 200)."""
+    def find_owner(self, ip):
+        records = self.session.query(IPRange).all()
+        for record in records:
+            if ip2_int(ip) <= ip2_int(record.end_ip) and ip2_int(
+                    ip) >= ip2_int(record.start_ip):
+                return record.department
+        return 'N/A'
+
+    def success_hook(self, response, **kwargs):
         url = urlparse(response.url)
-        port = url.port
-        protocol = url.scheme
-        response_code = response.status_code
+        host = response.request.headers['Host']
+        ip_address = re.search(r'(\d{1,3}\.){3}\d{1,3}', response.url).group(0)
 
-        domain_name = response.request.headers['Host']
-        ipaddr = re.search(r'(\d{1,3}\.){3}\d{1,3}', response.url).group(0)
+        domain = Domain(name=host)
+        ip = IP(ip_address=ip_address)
 
-        ip = IP(ip_address=ipaddr)
-        domain = Domain(name=domain_name)
+        owner = self.find_owner(ip_address)
 
         scan_result = ScanResult(
-            port=port,
-            protocol=protocol,
-            response_code=response_code,
+            port=url.port,
+            protocol=url.scheme,
+            response_code=response.status_code,
+            owner=owner,
             message=None,
             ip=ip,
             domain=domain)
 
         self.session.add(scan_result)
-        print(' |- <{0}> {1} is alive on port {2} with IP {3}'.format(
-            response_code, domain.name, port, ipaddr))
 
-    def __find_owner(self, ip):
-        """Find a site owner by comparing IP addresses as integers."""
-        for record in self.session.query(IPRange).all():
-            head, tail = record.start_ip, record.end_ip
+        display_results(
+            'Domain: {domain} IP Address: {ip} Port: {port} Response Code: {response_code} Owner: {owner}.'.format(
+                domain=domain.name,
+                ip=ip_address,
+                port=url.port,
+                response_code=response.status_code,
+                owner=owner))
 
-            if is_ipv4(head) and is_ipv4(tail):
-                low, high = ip2int(head), ip2int(tail)
-                if ip2int(ip) >= low and ip2int(ip) <= high:
-                    return record.dept
-            else:
-                print(
-                    'ERROR: invalid IP address(es) - {0}.',
-                    (record.start_ip,
-                     record.end_ip),
-                    file=sys.stderr)
-                sys.exit(1)
-        return 'Owner not found ...'
-
-    def __failure_hook(self, request, exception):
-        """Handles failed requests (e.g., TimeoutError, TooManyRedirects, etc)."""
+    def failure_hook(self, request, exception):
         url = urlparse(request.url)
-        port = url.port
-        protocol = url.scheme
-        response_code = None
-        message = request.exception.message
+        host = exception.request.headers['Host']
+        ip_address = re.search(r'(\d{1,3}\.){3}\d{1,3}', request.url).group(0)
 
-        domain_name = exception.request.headers['Host']
-        ipaddr = re.search(r'(\d{1,3}\.){3}\d{1,3}', request.url).group(0)
+        domain = Domain(name=host)
+        ip = IP(ip_address=ip_address)
 
-        ip = IP(ip_address=ipaddr)
-        domain = Domain(name=domain_name)
+        owner = self.find_owner(ip_address)
 
         scan_result = ScanResult(
-            port=port,
-            protocol=protocol,
-            response_code=response_code,
-            message=message,
+            port=url.port,
+            protocol=url.scheme,
+            response_code=None,
+            owner=owner,
+            message=request.exception.message,
             ip=ip,
             domain=domain)
 
         self.session.add(scan_result)
 
-        owner = self.__find_owner(ipaddr)
-        print(' |- {0} is unreachable on port {1} with {2}, contact: {3}'.format(
-            domain.name, port, ipaddr, owner))
+        display_results(
+            'Domain: {domain} IP Address: {ip} Port: {port} Owner: {owner}.'.format(
+                domain=domain.name,
+                ip=ip_address,
+                port=url.port,
+                owner=owner),
+            contains_errors=True)
 
     def scan(self, session):
-        """Main scan entry point."""
         time_started = time.strftime('%Y-%m-%d %H:%M:%S')
-        self.session = session
         author = getpass.getuser()
         http, https = self.supported.keys()[0], self.supported.keys()[1]
-        url_factory = self.__url_factory()
+        url_factory = self.url_factory()
         urls = url_factory(http, session) + url_factory(https, session)
+
+        self.session = session
 
         async_requests = [
             grequests.head(
                 url=url,
                 allow_redirects=False,
                 headers={
-                    'User-Agent': random.choice(settings.USER_AGENTS), 'Host': host},
-                hooks=dict(response=self.__success_hook),
+                    'User-Agent': settings.USER_AGENT, 'Host': host},
+                hooks=dict(response=self.success_hook),
                 timeout=settings.TIMEOUT) for host, url in urls]
 
         grequests.map(
             requests=async_requests,
             size=settings.CONCURRENT_REQUESTS,
-            exception_handler=self.__failure_hook)
+            exception_handler=self.failure_hook)
 
         time_ended = time.strftime('%Y-%m-%d %H:%M:%S')
         scan_instance = ScanInstance(
@@ -167,3 +158,4 @@ class Scanner(object):
             author=author)
 
         self.session.add(scan_instance)
+        export_xlsx(session)

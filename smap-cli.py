@@ -10,6 +10,10 @@ from core.models import IPRange
 from core.parser import Parser
 from core.scanner import Scanner
 
+from core.cli.output import display_failure
+from core.cli.output import display_info
+from core.cli.output import display_warning
+
 from sqlalchemy.sql import exists
 from sqlalchemy.engine import reflection
 from sqlalchemy.exc import SQLAlchemyError
@@ -29,6 +33,21 @@ Engine = sqlalchemy.create_engine(
 Session = sessionmaker(bind=Engine)
 
 
+@contextmanager
+def session_scope():
+    session = Session()
+    try:
+        yield session
+        session.commit()
+    except SQLAlchemyError as sql_error:
+        display_failure(
+            '{0}'.format(str(sql_error)))
+        session.rollback()
+        sys.exit(1)
+    finally:
+        session.close()
+
+
 def banner():
     print r"""
 
@@ -46,35 +65,20 @@ def banner():
     """.format(settings.VERSION)
 
 
-@contextmanager
-def session_scope():
-    """Yield session state in a controlled context."""
-    session = Session()
-    try:
-        yield session
-        session.commit()
-    except SQLAlchemyError as error:
-        message = str(error)
-        click.echo('ERROR: {0}'.format(message), file=sys.stderr)
-        session.rollback()
-        sys.exit(1)
-    finally:
-        session.close()
-
-
 def inspect_csv(ctx, param, value):
-    """Inspect CSV file to ensure it follows strict requirements."""
     mimetype = mimetypes.guess_type(value, strict=True)[0]
     extension = mimetypes.guess_extension(mimetype, strict=True)
 
     if mimetype != 'text/csv' or extension != '.csv':
-        raise click.BadParameter('\'{0}\' is not a CSV file.'.format(value))
+        display_failure("'{0}' is not a CSV file.".format(value))
+        sys.exit(1)
 
     fsize = os.stat(value).st_size
     if not fsize >= 0 and fsize <= settings.MAX_BYTES:
-        raise click.BadParameter(
-            'CSV doesn\'t meet size requirements {0}K.'.format(
-                settings.MAX_BYTES * 0.001))
+        converted = settings.MAX_BYTES * 0.001
+        display_failure(
+            "CSV doesn't meet size requirements {0}K.".format(converted))
+        sys.exit(1)
     return value
 
 
@@ -86,60 +90,91 @@ def smap():
 
 @smap.command()
 def scan():
-    """Start IP scanner."""
     if not database_exists(Engine.url):
-        click.echo('ERROR: database does not exist.', file=sys.stderr)
+        display_failure('database does not exist.')
         sys.exit(1)
 
     inspector = reflection.Inspector.from_engine(Engine)
-    if inspector.get_table_names():
-        with session_scope() as session:
-            q1 = session.query(DNSList)
-            q2 = session.query(IPRange)
-            if not(session.query(q1.exists()).scalar()
-                   and session.query(q2.exists()).scalar()):
-                click.echo(
-                    'ERROR: missing Domain Ranges and DNS records!',
-                    file=sys.stderr)
-                return
-            banner()
-            click.echo('[*] starting scan ...')
-            Scanner().scan(session)
-    else:
-        click.echo('ERROR: no table(s) were found.', file=sys.stderr)
+
+    if not inspector.get_table_names():
+        display_failure('no table(s) were found.')
         sys.exit(1)
+
+    with session_scope() as session:
+        q1 = session.query(DNSList)
+        q2 = session.query(IPRange)
+
+        if not(session.query(q1.exists()).scalar()
+               and session.query(q2.exists()).scalar()):
+            display_failure(
+                'scan requires records in both `dns_list` and `ip_range`.')
+            sys.exit(1)
+
+        banner()
+        display_info('starting scan ...')
+        Scanner().scan(session)
+    return 0
 
 
 @smap.command()
 def setupdb():
-    """Create smap database tables if needed."""
     if not database_exists(Engine.url):
-        click.echo('ERROR: database does not exist.', file=sys.stderr)
+        display_failure('database does not exist.')
         sys.exit(1)
 
     inspector = reflection.Inspector.from_engine(Engine)
+
     if not inspector.get_table_names():
         Base.metadata.create_all(Engine, checkfirst=True)
-        click.echo('[+] created database tables.')
-        return
+        display_info('created database tables.')
+        return 0
 
-    click.echo('WARNING: skipped. Table(s) already exist.')
+    display_warning('skipped. Table(s) already exist.')
+    return 0
 
 
 @smap.command('insert-dns-records')
 @click.option('--target', type=click.Path(exists=True), callback=inspect_csv)
 def insert_dns_records(target):
-    """Insert DNS records to database."""
+    if not database_exists(Engine.url):
+        display_failure('database does not exist.')
+        sys.exit(1)
+
+    inspector = reflection.Inspector.from_engine(Engine)
+    required = ('ip',
+                'firewall_map',
+                'domain',
+                'dns_record',
+                'dns_list')
+
+    missing_tables = [
+        i for i in required if i not in inspector.get_table_names()]
+
+    if missing_tables:
+        display_failure(
+            'missing table(s) -> {0}'.format(', '.join(missing_tables)))
+        sys.exit(1)
+
     with session_scope() as session:
         Parser().parse_dns_records(target, session)
+    return 0
 
 
 @smap.command('insert-domain-info')
 @click.option('--target', type=click.Path(exists=True), callback=inspect_csv)
 def insert_domain_info(target):
-    """Insert IPMan records to database."""
+    if not database_exists(Engine.url):
+        display_failure('database does not exist.')
+        sys.exit(1)
+
+    inspector = reflection.Inspector.from_engine(Engine)
+    if 'ip_range' not in inspector.get_table_names():
+        display_failure("`ip_range` table doesn't exist.")
+        sys.exit(1)
+
     with session_scope() as session:
         Parser().parse_domain_info(target, session)
+    return 0
 
 if __name__ == '__main__':
     sys.exit(smap())
