@@ -5,7 +5,7 @@ from models import FirewallMap
 from models import IP
 from models import IPRange
 
-from utilities import is_ipv4
+from util import is_ipv4
 
 import csv
 import re
@@ -51,12 +51,7 @@ class Parser(object):
                         firewall_map=firewall_map)
 
                     self.session.add_all(
-                        [external_ip,
-                         internal_ip,
-                         firewall_map,
-                         domain,
-                         record_type,
-                         dns_list])
+                        [external_ip, internal_ip, firewall_map, domain, record_type, dns_list])
 
     def parse_domain_info(self, target, session):
         """Extract owner records from a CSV."""

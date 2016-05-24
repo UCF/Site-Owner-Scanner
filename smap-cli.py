@@ -10,9 +10,9 @@ from core.models import IPRange
 from core.parser import Parser
 from core.scanner import Scanner
 
-from core.output import display_failure
-from core.output import display_info
-from core.output import display_warning
+from core.cli.output import display_failure
+from core.cli.output import display_info
+from core.cli.output import display_warning
 
 from sqlalchemy.sql import exists
 from sqlalchemy.engine import reflection
@@ -113,7 +113,7 @@ def scan():
         banner()
         display_info('starting scan ...')
         Scanner().scan(session)
-        return 0
+    return 0
 
 
 @smap.command()
@@ -157,7 +157,7 @@ def insert_dns_records(target):
 
     with session_scope() as session:
         Parser().parse_dns_records(target, session)
-        return 0
+    return 0
 
 
 @smap.command('insert-domain-info')
@@ -174,7 +174,7 @@ def insert_domain_info(target):
 
     with session_scope() as session:
         Parser().parse_domain_info(target, session)
-        return 0
+    return 0
 
 if __name__ == '__main__':
     sys.exit(smap())
