@@ -65,7 +65,8 @@ class Scanner(object):
     def find_owner(self, ip):
         records = self.session.query(IPRange).all()
         for record in records:
-            if ip2_int(ip) <= ip2_int(record.end_ip) and ip2_int(ip) >= ip2_int(record.start_ip):
+            if ip2_int(ip) <= ip2_int(record.end_ip) and ip2_int(
+                    ip) >= ip2_int(record.start_ip):
                 return record.department
         return 'N/A'
 
