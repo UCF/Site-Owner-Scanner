@@ -85,7 +85,7 @@ def inspect_csv(ctx, param, value):
 @click.group()
 @click.version_option(version=settings.VERSION)
 def smap():
-    """Map UCF site owners."""
+    """Map UCF Site Owners."""
 
 
 @smap.command()

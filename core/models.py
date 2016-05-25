@@ -1,6 +1,7 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy_utils import IPAddressType
 
+from sqlalchemy import Boolean
 from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
@@ -29,7 +30,7 @@ class FirewallMap(Base):
     internal_ip_id = Column(Integer, ForeignKey('ip.id'), nullable=False)
     external_ip_id = Column(Integer, ForeignKey('ip.id'), nullable=False)
 
-    #### RELATIONSHIPS ####
+    ########## RELATIONSHIPS ##########
 
     internal_ip = relationship(
         'IP',
@@ -47,12 +48,10 @@ class DNSList(Base):
 
     id = Column(Integer, primary_key=True)
     domain_id = Column(Integer, ForeignKey('domain.id'), nullable=False)
-
     record_type_id = Column(
         Integer,
         ForeignKey('dns_record.id'),
         nullable=False)
-
     firewall_map_id = Column(
         Integer,
         ForeignKey('firewall_map.id'),
@@ -117,10 +116,11 @@ class ScanResult(Base):
     id = Column(Integer, primary_key=True)
     port = Column(Integer, nullable=False)
     protocol = Column(String(10), nullable=False)
-    response_code = Column(Integer, nullable=True)
-
+    response_code = Column(Integer, nullable=False, default=None)
     owner = Column(String(150), nullable=False)
-    message = Column(Text, nullable=True)
+    message = Column(Text, nullable=True, default=None)
+    h1_tag = Column(Boolean, nullable=False, default=False)
+    title_tag = Column(Boolean, nullable=False, default=False)
 
     ip_id = Column(Integer, ForeignKey('ip.id'), nullable=False)
     domain_id = Column(Integer, ForeignKey('domain.id'), nullable=False)

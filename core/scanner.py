@@ -1,3 +1,5 @@
+from bs4 import BeautifulSoup
+
 from models import Domain
 from models import DNSList
 from models import IP
@@ -33,7 +35,7 @@ class Scanner(object):
     @staticmethod
     def _add_host(host):
         ucf_host = r'^(ucf\.edu|.*ucf\.edu)$'
-        if re.match(ucf_host, host) != None:
+        if re.match(ucf_host, host):
             return host
         return '{0}.ucf.edu'.format(host)
 
@@ -52,6 +54,7 @@ class Scanner(object):
             for record in session.query(DNSList).all():
                 domain_name = record.domain.name
                 external_ip = record.firewall_map.external_ip.ip_address
+
                 mappings.append(
                     ('{host}'.format(
                         host=self._add_host(domain_name)),
@@ -75,17 +78,24 @@ class Scanner(object):
         host = response.request.headers['Host']
         ip_address = re.search(r'(\d{1,3}\.){3}\d{1,3}', response.url).group(0)
 
+        soup = BeautifulSoup(response.text, 'html.parser')  
+        owner = self.find_owner(ip_address)
+    
         domain = Domain(name=host)
         ip = IP(ip_address=ip_address)
 
-        owner = self.find_owner(ip_address)
+        if 'h1' in soup.html:
+            h1_tag = True
+        if soup.title and soup.title.name:
+            title_tag = True
 
         scan_result = ScanResult(
             port=url.port,
             protocol=url.scheme,
             response_code=response.status_code,
             owner=owner,
-            message=None,
+            h1_tag=h1_tag,
+            title_tag=title_tag,
             ip=ip,
             domain=domain)
 
@@ -106,13 +116,11 @@ class Scanner(object):
 
         domain = Domain(name=host)
         ip = IP(ip_address=ip_address)
-
         owner = self.find_owner(ip_address)
 
         scan_result = ScanResult(
             port=url.port,
             protocol=url.scheme,
-            response_code=None,
             owner=owner,
             message=request.exception.message,
             ip=ip,
@@ -138,9 +146,9 @@ class Scanner(object):
         self.session = session
 
         async_requests = [
-            grequests.head(
+            grequests.get(
                 url=url,
-                allow_redirects=False,
+                allow_redirects=True,
                 headers={
                     'User-Agent': settings.USER_AGENT, 'Host': host},
                 hooks=dict(response=self.success_hook),

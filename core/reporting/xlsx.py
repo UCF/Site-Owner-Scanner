@@ -8,7 +8,7 @@ def export_xlsx(session):
 
     bold = workbook.add_format({'bold': 1})
 
-    worksheet.set_column('A:E', 30)
+    worksheet.set_column('A:E', 40)
 
     worksheet.write('A1', 'Domain', bold)
     worksheet.write('B1', 'IP', bold)

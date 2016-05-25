@@ -14,17 +14,15 @@ import sys
 
 class Parser(object):
 
-    """CSV Parser."""
-
     record_types = ('A', 'AAAA')
 
     def __init__(self):
         self.session = None
 
     def parse_dns_records(self, target, session):
-        """Extract DNS records from a CSV."""
         with open(target, 'rb') as records:
             self.session = session
+
             external = csv.reader(
                 records, delimiter=',', quoting=csv.QUOTE_MINIMAL)
             external.next()
@@ -54,13 +52,14 @@ class Parser(object):
                         [external_ip, internal_ip, firewall_map, domain, record_type, dns_list])
 
     def parse_domain_info(self, target, session):
-        """Extract owner records from a CSV."""
         with open(target, 'rb') as records:
             self.session = session
+
             owners = csv.reader(
                 records,
                 delimiter=',',
                 quoting=csv.QUOTE_MINIMAL)
+
             owners.next()
             for record in owners:
                 if record[4] != 'All Off Campus Addresses':
