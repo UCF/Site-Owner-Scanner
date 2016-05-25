@@ -80,10 +80,11 @@ class Scanner(object):
 
         soup = BeautifulSoup(response.text, 'html.parser')  
         owner = self.find_owner(ip_address)
-    
+ 
         domain = Domain(name=host)
         ip = IP(ip_address=ip_address)
 
+        h1_tag = title_tag = False
         if 'h1' in soup.html:
             h1_tag = True
         if soup.title and soup.title.name:
@@ -113,10 +114,10 @@ class Scanner(object):
         url = urlparse(request.url)
         host = exception.request.headers['Host']
         ip_address = re.search(r'(\d{1,3}\.){3}\d{1,3}', request.url).group(0)
+        owner = self.find_owner(ip_address)
 
         domain = Domain(name=host)
         ip = IP(ip_address=ip_address)
-        owner = self.find_owner(ip_address)
 
         scan_result = ScanResult(
             port=url.port,
